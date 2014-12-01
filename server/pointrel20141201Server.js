@@ -50,14 +50,18 @@ app.get(apiBaseURL + '/resources/:id', function (request, response){
 
 app.post(apiBaseURL + '/resources/:id', function (request, response){
     console.log("======================= POST: ", request.url);
-    console.log("sha256:", request.sha256);
     
-    var resource = {id: request.body.id, sha256: request.sha256};
+    var sha256 = request.sha256;
+    console.log("sha256:", sha256);
+    
+    var resource = {id: request.body.id, sha256: sha256};
     console.log(resource);
     
-    fs.writeFileSync("../server-data/test.txt", request.rawBodyBuffer);
+    var length = request.rawBodyBuffer.length;
+    
+    fs.writeFileSync("../server-data/" + sha256 + "_" + length + ".pce", request.rawBodyBuffer);
 
-    return response.json({status: 'OK', message: 'Wrote content', sha256: request.sha256});
+    return response.json({status: 'OK', message: 'Wrote content', sha256: sha256});
   });
 
 // Create an HTTP service.
