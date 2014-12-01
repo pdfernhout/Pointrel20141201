@@ -7,41 +7,84 @@ Test of PUT-ing a resource.
 
 <script>
 console.log("starting up...");
-require(["dojo/store/JsonRest"], function(JsonRest) {
+require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/digests/SHA256"], function(xhr, digests, SHA256) {
     "use strict";
     
-    var store = new JsonRest({
-      target: "/api/pointrel20141201/resources"
-    });
+    var resourcesPath = "/api/pointrel20141201/resources/";
+    
+    function pointrel_put(item, callback) {
+        console.log("pointrel_put", item);
+        
+        var content = JSON.stringify(item);
+        var itemReference = SHA256(content,digests.outputTypes.Hex) + "_" + content.length;
+        
+        console.log("will be posting '%s'", content);
+        
+        xhr.post(resourcesPath + itemReference, {
+            handleAs: "text",
+            data: content,
+            headers: {'Content-Type': 'application/json; charset=UTF-8'}
+        }).then(function(data) {
+            // OK
+            callback(null, JSON.parse(data));
+        }, function(error) {
+            // Error
+            callback(error, null);
+        }, function(event) {
+            // Handle a progress event from the request if the browser supports XHR2
+        });
+    }
+    
+    function pointrel_get(itemReference, callback) {
+        console.log("pointrel_get", itemReference);
+        
+        xhr.get(resourcesPath + itemReference, {
+            handleAs: "text"
+        }).then(function(data) {
+            // OK
+            callback(null, JSON.parse(data));
+        }, function(error) {
+            // Error
+            callback(error, null);
+        }, function(event) {
+            // Handle a progress event from the request if the browser supports XHR2
+        });
+    }    
     
     var testObject1 = {foo: "bar", id: 3};
 
-    store.put(testObject1, {incremental: true}).then(function(result) {
-      console.log("Stored item", result.sha256AndLength);
+    pointrel_put(testObject1, function(error, result) {
+        if (error) { console.log("error", error); return;}
+        
+        console.log("Stored item", result.sha256AndLength);
       
-      var sha256AndLengthExpected1 = "5d8fd807c06c3a8e99fa7bd59b57d5b13822152be3de068a8d9a4e5ad609a1c5_20";
+        var sha256AndLengthExpected1 = "5d8fd807c06c3a8e99fa7bd59b57d5b13822152be3de068a8d9a4e5ad609a1c5_20";
       
-      console.log("match expected 1?", sha256AndLengthExpected1 === result.sha256AndLength); 
+        console.log("match expected 1?", sha256AndLengthExpected1 === result.sha256AndLength); 
       
-      // Get an object by sha256AndLength
-      store.get(sha256AndLengthExpected1).then(function(item) {
-        console.log("Got item", item);
-      });
+        // Get an object by sha256AndLength
+        pointrel_get(sha256AndLengthExpected1, function(error, item) {
+            if (error) { console.log("error", error); return;}
+            console.log("Got item", item);
+        });
     });
     
     var testObject2 = {id: "hello world", tags: ["test", "pointrel://pages/hello-world.txt"], contentType: "text/plain", content: "Hello, world!"};
-    store.put(testObject2, {incremental: true}).then(function(result) {
-      console.log("Stored item", result.sha256AndLength);
+    pointrel_put(testObject2, function(error, result) {
+        if (error) { console.log("error", error); return;}
+        
+        console.log("Stored item", result.sha256AndLength);
       
-      var sha256AndLengthExpected2 = "bdc83b865f8720e3fccee44ec482031c8c9d185b213dc50f2d429bce241f080d_124";
+        var sha256AndLengthExpected2 = "bdc83b865f8720e3fccee44ec482031c8c9d185b213dc50f2d429bce241f080d_124";
       
-      console.log("match expected 2?", sha256AndLengthExpected2 === result.sha256AndLength); 
+        console.log("match expected 2?", sha256AndLengthExpected2 === result.sha256AndLength); 
       
-      store.get(result.sha256AndLength).then(function(item) {
-        console.log("Got item", item);
-      });
+        pointrel_get(result.sha256AndLength, function(error, item) {
+            if (error) { console.log("error", error); return;}
+            console.log("Got item", item);
+        });
     });
-  });
+});
 
 </script>
 </body>
