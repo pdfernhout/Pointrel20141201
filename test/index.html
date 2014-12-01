@@ -12,14 +12,14 @@ require(["dojo/store/JsonRest"], function(JsonRest) {
       target: "/api/pointrel20141201/resources"
     });
 
-    // Get an object by identity
+    // Get an object by identity -- may fail the first time as probably does not exist yet
     store.get("5d8fd807c06c3a8e99fa7bd59b57d5b13822152be3de068a8d9a4e5ad609a1c5_20").then(function(item) {
       console.log("Got item", item);
     });
 
-    // Store an object identified by identity
-    store.put({foo: "bar", id: 3}, {incremental: true}).then(function(item) {
-      console.log("Stored item", item);
+    // Store an object identified by id
+    store.put({foo: "bar", id: 3}, {incremental: true}).then(function(result) {
+      console.log("Stored item", result.sha256AndLength);
     });
   });
 

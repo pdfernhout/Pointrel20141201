@@ -59,11 +59,17 @@ app.get(apiBaseURL + '/resources/:id', function (request, response) {
     try{
       contentBuffer = fs.readFileSync("../server-data/" + sha256AndLength + ".pce");
     } catch (error) {
-        return response.json({status: 'FAILED', message: 'Some sort of exception when reading: ' + error, sha256: sha256AndLength});
+        // TODO: Should check what sort of error and respond accordingly
+        response.status(404)  // HTTP status 404: NotFound
+        .send('Not found: ' + error);
+        // return response.json({status: 'FAILED', message: 'Some sort of exception when reading: ' + error, sha256: sha256AndLength});
     }
 
+    // TODO: Probably can send buffer or file directly?
     var content = contentBuffer.toString('utf8');
-    response.json({status: 'OK', content: content});
+    // response.json(content);
+    response.setHeader('Content-Type', 'application/json');
+    response.send(content);
 });
 
 app.post(apiBaseURL + '/resources/:id', function (request, response) {
@@ -79,14 +85,20 @@ app.post(apiBaseURL + '/resources/:id', function (request, response) {
     
     // Probably should validate content as utf8 and valid JSON and so on...
     
+    var sha256AndLength = sha256 + "_" + length;
     // TODO: Make asynchronous
     try {
-      fs.writeFileSync("../server-data/" + sha256 + "_" + length + ".pce", request.rawBodyBuffer);
+      fs.writeFileSync("../server-data/" + sha256AndLength + ".pce", request.rawBodyBuffer);
     } catch (error) {
-        return response.json({status: 'FAILED', message: 'Some sort of exception when writing: ' + error, sha256: sha256});
+        // TODO: Should check what sort of error and respond accordingly
+        response.status(500)  // HTTP status 500: Server error
+        .send('Server error: ' + error);
+        // return response.json({status: 'FAILED', message: 'Some sort of exception when writing: ' + error, sha256: sha256});
     }
     
-    return response.json({status: 'OK', message: 'Wrote content', sha256: sha256});
+    // TODO: Indexing...
+    
+    return response.json({status: 'OK', message: 'Wrote content', sha256AndLength: sha256AndLength});
   });
 
 // Create an HTTP service.
