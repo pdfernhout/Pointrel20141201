@@ -1,0 +1,28 @@
+<html>
+<head>
+<script src="//ajax.googleapis.com/ajax/libs/dojo/1.10.1/dojo/dojo.js"></script>
+</head>
+<body>
+Test of PUT-ing a resource.
+
+<script>
+console.log("starting up...");
+require(["dojo/store/JsonRest"], function(JsonRest) {
+    var store = new JsonRest({
+      target: "/api/pointrel20141201/resources"
+    });
+
+    // Get an object by identity
+    store.get("test001").then(function(item) {
+      console.log("Got item", item);
+    });
+
+    // Store an object identified by identity
+    store.put({foo: "bar", id: 3}, {incremental: true}).then(function(item) {
+      console.log("Stored item", item);
+    });
+  });
+
+</script>
+</body>
+</html>
