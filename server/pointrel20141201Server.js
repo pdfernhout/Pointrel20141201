@@ -3,6 +3,7 @@
 "use strict";
 
 var version = "pointrel20141201-0.0.1";
+var serverDataDirectory = "../server-data/";
 
 // Standard nodejs modules
 var fs = require('fs');
@@ -16,6 +17,46 @@ var bodyParser = require('body-parser');
 var app = express();
 
 var apiBaseURL = '/api/pointrel20141201';
+
+// Maps id to sha256AndLength, singular
+var idIndex = {};
+
+// Maps tags to sha256AndLength, array
+var tagIndex = {};
+
+//Maps contentType to sha256AndLength, array
+var contentTypeIndex = {};
+
+function addToIndex(indexType, index, key, itemReference) {
+    // console.log("addToIndex", indexType, index, key, itemReference);
+    var itemsForKey = index[key];
+    if (!itemsForKey) {
+        itemsForKey = [];
+        index[key] = itemsForKey;
+    }
+    itemsForKey.push(itemReference);
+}
+
+function addToIndexes(body, sha256AndLength) {
+    var id = body.id;
+    var tags = body.tags;
+    var contentType = body.contentType;
+    
+    if (id) {
+        if (idIndex[id]) console.log("ERROR: duplicate reference to ID in %s and %s", idIndex[id], id);
+        // idIndex[id] = sha256AndLength;
+        addToIndex("id", idIndex, "" + id, sha256AndLength);
+    }
+    if (tags) {
+        for (var tagKey in tags) {
+            var tag = tags[tagKey];
+            addToIndex("tags", tagIndex, "" + tag, sha256AndLength);
+        }
+    }
+    if (contentType) {
+        addToIndex("contentType", contentTypeIndex, "" + contentType, sha256AndLength);
+    }
+}
 
 /*
 app.use("/$",   function(req, res) {
@@ -57,7 +98,7 @@ app.get(apiBaseURL + '/resources/:id', function (request, response) {
     // TODO: Make asynchronous
     var contentBuffer;
     try{
-      contentBuffer = fs.readFileSync("../server-data/" + sha256AndLength + ".pce");
+      contentBuffer = fs.readFileSync(serverDataDirectory + sha256AndLength + ".pce");
     } catch (error) {
         // TODO: Should check what sort of error and respond accordingly
         response.status(404)  // HTTP status 404: NotFound
@@ -88,7 +129,7 @@ app.post(apiBaseURL + '/resources/:id', function (request, response) {
     var sha256AndLength = sha256 + "_" + length;
     // TODO: Make asynchronous
     try {
-      fs.writeFileSync("../server-data/" + sha256AndLength + ".pce", request.rawBodyBuffer);
+      fs.writeFileSync(serverDataDirectory + sha256AndLength + ".pce", request.rawBodyBuffer);
     } catch (error) {
         // TODO: Should check what sort of error and respond accordingly
         response.status(500)  // HTTP status 500: Server error
@@ -96,10 +137,40 @@ app.post(apiBaseURL + '/resources/:id', function (request, response) {
         // return response.json({status: 'FAILED', message: 'Some sort of exception when writing: ' + error, sha256: sha256});
     }
     
-    // TODO: Indexing...
+    // TODO: Maybe reject new resource if the ID already exists?
+    addToIndexes(request.body, sha256AndLength);
     
     return response.json({status: 'OK', message: 'Wrote content', sha256AndLength: sha256AndLength});
   });
+
+function endsWith(str, suffix) {
+    return str.indexOf(suffix, str.length - suffix.length) !== -1;
+}
+
+function reindexAllResources() {
+    idIndex = {};
+    tagIndex = {};
+    contentTypeIndex = {};
+    
+    var fileNames = fs.readdirSync(serverDataDirectory);
+    // console.log("fileNames", fileNames);
+    for (var fileNameIndex in fileNames) {
+        var fileName = fileNames[fileNameIndex];
+        if (endsWith(fileName, ".pce")) {
+            console.log("Indexing: ", fileName);
+            var resourceContent = fs.readFileSync(serverDataDirectory + fileName).toString("utf8");
+            var resourceObject = JSON.parse(resourceContent);
+            // console.log("resourceObject", resourceObject);
+            addToIndexes(resourceObject, fileName.substring(0, fileName.length-4));
+        } 
+    }
+}
+
+reindexAllResources();
+
+console.log("id index", idIndex);
+console.log("tag index", tagIndex);
+console.log("contentType index", contentTypeIndex);
 
 // Create an HTTP service.
 var server = http.createServer(app).listen(8080, function () {
