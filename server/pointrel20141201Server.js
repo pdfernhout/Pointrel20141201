@@ -43,7 +43,7 @@ function addToIndexes(body, sha256AndLength) {
     var contentType = body.contentType;
     
     if (id) {
-        if (idIndex[id]) console.log("ERROR: duplicate reference to ID in %s and %s", idIndex[id], id);
+        if (idIndex[id]) console.log("ERROR: duplicate reference to ID in %s and %s", idIndex[id], sha256AndLength);
         // idIndex[id] = sha256AndLength;
         addToIndex("id", idIndex, "" + id, sha256AndLength);
     }
@@ -91,9 +91,11 @@ function sanitizeFileName(fileName) {
 
 // TODO: use nested directories so can support lots of files better
 
-app.get(apiBaseURL + '/resources/:id', function (request, response) {
+app.get(apiBaseURL + '/resources/:sha256AndLength', function (request, response) {
     // Sanitizes resource ID to prevent reading arbitrary files
-    var sha256AndLength = sanitizeFileName(request.params.id);
+    var sha256AndLength = sanitizeFileName(request.params.sha256AndLength);
+    
+    console.log("==== GET", request.url);
     
     // TODO: Make asynchronous
     var contentBuffer;
@@ -103,7 +105,8 @@ app.get(apiBaseURL + '/resources/:id', function (request, response) {
         // TODO: Should check what sort of error and respond accordingly
         response.status(404)  // HTTP status 404: NotFound
         .send('Not found: ' + error);
-        // return response.json({status: 'FAILED', message: 'Some sort of exception when reading: ' + error, sha256: sha256AndLength});
+        // response.json({status: 'FAILED', message: 'Some sort of exception when reading: ' + error, sha256: sha256AndLength});
+        return;
     }
 
     // TODO: Probably can send buffer or file directly?
@@ -113,41 +116,53 @@ app.get(apiBaseURL + '/resources/:id', function (request, response) {
     response.send(content);
 });
 
-app.post(apiBaseURL + '/resources/:id', function (request, response) {
-    console.log("======================= POST: ", request.url);
-    
+app.post(apiBaseURL + '/resources/:sha256AndLength', function (request, response) {
+    // console.log("POST", request.url, request.body);
     var sha256 = request.sha256;
-    console.log("sha256:", sha256);
+    // console.log("sha256:", sha256);
     
-    var resource = {id: request.body.id, sha256: sha256};
-    console.log(resource);
+    if (!request.rawBodyBuffer) {
+        response.status(406)  // HTTP status 406: Not acceptable
+        .send('{error: "Not acceptable: post is missing JSON Content-Type body"}');
+        return;
+    }
     
     var length = request.rawBodyBuffer.length;
     
     // Probably should validate content as utf8 and valid JSON and so on...
     
     var sha256AndLength = sha256 + "_" + length;
+    console.log("==== POST: ", request.url, sha256AndLength);
+    
+    if (sha256AndLength !== request.params.sha256AndLength) {
+        response.status(406)  // HTTP status 406: Not acceptable
+        .send('{error: "Not acceptable: sha256AndLength of content does not match that of request url"}');
+        return;
+    }
+
     // TODO: Make asynchronous
     try {
       fs.writeFileSync(serverDataDirectory + sha256AndLength + ".pce", request.rawBodyBuffer);
     } catch (error) {
         // TODO: Should check what sort of error and respond accordingly
         response.status(500)  // HTTP status 500: Server error
-        .send('Server error: ' + error);
-        // return response.json({status: 'FAILED', message: 'Some sort of exception when writing: ' + error, sha256: sha256});
+        .send('{error: "Server error: ' + error + '"}');
+        // response.json({status: 'FAILED', message: 'Some sort of exception when writing: ' + error, sha256: sha256});
+        return;
     }
     
     // TODO: Maybe reject new resource if the ID already exists?
     addToIndexes(request.body, sha256AndLength);
     
     return response.json({status: 'OK', message: 'Wrote content', sha256AndLength: sha256AndLength});
-  });
+});
 
 function endsWith(str, suffix) {
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
 }
 
 function reindexAllResources() {
+    console.log("reindexAllResources");
     idIndex = {};
     tagIndex = {};
     contentTypeIndex = {};
