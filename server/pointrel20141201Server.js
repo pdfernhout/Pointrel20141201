@@ -54,8 +54,10 @@ app.post(apiBaseURL + '/resources/:id', function (request, response){
     
     var resource = {id: request.body.id, sha256: request.sha256};
     console.log(resource);
+    
+    fs.writeFileSync("../server-data/test.txt", request.rawBodyBuffer);
 
-    return response.json({status: 'FAILED', content: 'UNFINISHED', sha256: request.sha256});
+    return response.json({status: 'OK', message: 'Wrote content', sha256: request.sha256});
   });
 
 // Create an HTTP service.
