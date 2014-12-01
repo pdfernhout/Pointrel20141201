@@ -44,11 +44,23 @@ app.use(apiBaseURL + '/status', function(request, response) {
     response.json({status: 'OK', version: version});
 });
 
-app.get(apiBaseURL + '/resources/:id', function (request, response){
-    response.json({status: 'FAILED', content: 'UNFINISHED'});
+function sanitizeFileName(fileName) {
+    return fileName.replace(/\s/g, "_").replace(/\.[\.]+/g, "_").replace(/[^\w_\.\-]/g, "_");
+}
+
+// TODO: use nested directories so can support lots of files better
+
+app.get(apiBaseURL + '/resources/:id', function (request, response) {
+    // Sanitizes resource ID to prevent reading arbitrary files
+    var sha256AndLength = sanitizeFileName(request.params.id);
+    
+    // TODO: Make asynchronous
+    var contentBuffer = fs.readFileSync("../server-data/" + sha256AndLength + ".pce");
+    var content = contentBuffer.toString('utf8');
+    response.json({status: 'OK', content: content});
 });
 
-app.post(apiBaseURL + '/resources/:id', function (request, response){
+app.post(apiBaseURL + '/resources/:id', function (request, response) {
     console.log("======================= POST: ", request.url);
     
     var sha256 = request.sha256;
@@ -59,6 +71,9 @@ app.post(apiBaseURL + '/resources/:id', function (request, response){
     
     var length = request.rawBodyBuffer.length;
     
+    // Probably should validate content as utf8 and valid JSON and so on...
+    
+    // TODO: Make asynchronous
     fs.writeFileSync("../server-data/" + sha256 + "_" + length + ".pce", request.rawBodyBuffer);
 
     return response.json({status: 'OK', message: 'Wrote content', sha256: sha256});
