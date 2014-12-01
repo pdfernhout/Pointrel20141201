@@ -55,7 +55,13 @@ app.get(apiBaseURL + '/resources/:id', function (request, response) {
     var sha256AndLength = sanitizeFileName(request.params.id);
     
     // TODO: Make asynchronous
-    var contentBuffer = fs.readFileSync("../server-data/" + sha256AndLength + ".pce");
+    var contentBuffer;
+    try{
+      contentBuffer = fs.readFileSync("../server-data/" + sha256AndLength + ".pce");
+    } catch (error) {
+        return response.json({status: 'FAILED', message: 'Some sort of exception when reading: ' + error, sha256: sha256AndLength});
+    }
+
     var content = contentBuffer.toString('utf8');
     response.json({status: 'OK', content: content});
 });
@@ -74,8 +80,12 @@ app.post(apiBaseURL + '/resources/:id', function (request, response) {
     // Probably should validate content as utf8 and valid JSON and so on...
     
     // TODO: Make asynchronous
-    fs.writeFileSync("../server-data/" + sha256 + "_" + length + ".pce", request.rawBodyBuffer);
-
+    try {
+      fs.writeFileSync("../server-data/" + sha256 + "_" + length + ".pce", request.rawBodyBuffer);
+    } catch (error) {
+        return response.json({status: 'FAILED', message: 'Some sort of exception when writing: ' + error, sha256: sha256});
+    }
+    
     return response.json({status: 'OK', message: 'Wrote content', sha256: sha256});
   });
 
