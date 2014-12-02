@@ -43,7 +43,14 @@ function addToIndexes(body, sha256AndLength) {
     var contentType = body.contentType;
     
     if (id) {
-        if (idIndex[id]) console.log("ERROR: duplicate reference to ID in %s and %s", idIndex[id], sha256AndLength);
+        if (idIndex[id]) {
+            // Already indexed this item
+            if (idIndex[id] !== sha256AndLength) {
+                console.log("Already indexed " + sha256AndLength);
+                return;
+            }
+            console.log("ERROR: duplicate reference to ID in %s and %s", idIndex[id], sha256AndLength);
+        }
         // idIndex[id] = sha256AndLength;
         addToIndex("id", idIndex, "" + id, sha256AndLength);
     }
@@ -91,15 +98,10 @@ function sanitizeFileName(fileName) {
 
 // TODO: use nested directories so can support lots of files better
 
-app.get(apiBaseURL + '/resources/:sha256AndLength', function (request, response) {
-    // Sanitizes resource ID to prevent reading arbitrary files
-    var sha256AndLength = sanitizeFileName(request.params.sha256AndLength);
-    
-    console.log("==== GET", request.url);
-    
+function returnResource(sha256AndLength, response) {
     // TODO: Make asynchronous
     var contentBuffer;
-    try{
+    try {
       contentBuffer = fs.readFileSync(serverDataDirectory + sha256AndLength + ".pce");
     } catch (error) {
         // TODO: Should check what sort of error and respond accordingly
@@ -114,6 +116,14 @@ app.get(apiBaseURL + '/resources/:sha256AndLength', function (request, response)
     // response.json(content);
     response.setHeader('Content-Type', 'application/json');
     response.send(content);
+}
+
+app.get(apiBaseURL + '/resources/:sha256AndLength', function (request, response) {
+    // Sanitizes resource ID to prevent reading arbitrary files
+    var sha256AndLength = sanitizeFileName(request.params.sha256AndLength);
+    
+    console.log("==== GET by sha256AndLength", request.url);
+    returnResource(sha256AndLength, response);
 });
 
 app.post(apiBaseURL + '/resources/:sha256AndLength', function (request, response) {
