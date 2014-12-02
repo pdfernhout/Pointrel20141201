@@ -167,6 +167,22 @@ app.post(apiBaseURL + '/resources/:sha256AndLength', function (request, response
     return response.json({status: 'OK', message: 'Wrote content', sha256AndLength: sha256AndLength});
 });
 
+app.get(apiBaseURL + '/indexes/id/:id', function (request, response) {
+    console.log("==== GET by id", request.url);
+    
+    var id = request.params.id;
+    
+    var sha256AndLengthList = idIndex[id];
+    
+    if (!sha256AndLengthList || sha256AndLengthList.length === 0) {
+        response.status(404)  // HTTP status 404: Not found
+        .send('{error: "Not found"}');
+    }
+    
+    // Return the first -- should signal error if more than one?
+    return response.json({status: 'OK', message: "Index for ID", idRequested: id, items: sha256AndLengthList});
+});
+
 function endsWith(str, suffix) {
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
 }

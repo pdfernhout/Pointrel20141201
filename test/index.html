@@ -10,7 +10,9 @@ console.log("starting up...");
 require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/digests/SHA256"], function(xhr, digests, SHA256) {
     "use strict";
     
-    var resourcesPath = "/api/pointrel20141201/resources/";
+    var apiPath = "/api/pointrel20141201/";
+    var resourcesPath = apiPath + "resources/";
+    var idIndexPath = apiPath + "indexes/id/";
     
     function pointrel_put(item, callback) {
         console.log("pointrel_put", item);
@@ -49,7 +51,23 @@ require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/dig
         }, function(event) {
             // Handle a progress event from the request if the browser supports XHR2
         });
-    }    
+    }
+    
+    function pointrel_queryByID(id, callback) {
+        console.log("pointrel_itemsForID", id);
+        
+        xhr.get(idIndexPath + id, {
+            handleAs: "text"
+        }).then(function(data) {
+            // OK
+            callback(null, JSON.parse(data));
+        }, function(error) {
+            // Error
+            callback(error, null);
+        }, function(event) {
+            // Handle a progress event from the request if the browser supports XHR2
+        });
+    }
     
     var testObject1 = {foo: "bar", id: 3};
 
@@ -83,6 +101,11 @@ require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/dig
             if (error) { console.log("error", error); return;}
             console.log("Got item", item);
         });
+    });
+    
+    pointrel_queryByID("hello world", function(error, queryResult) {
+        if (error) { console.log("error", error); return;}
+        console.log("Got queryResult", queryResult);
     });
 });
 
