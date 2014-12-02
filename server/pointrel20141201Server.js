@@ -20,7 +20,7 @@ var apiBaseURL = '/api/pointrel20141201';
 
 var indexes = {
      // Maps whether an item was added to the indexes (use to quickly tell if it exists)
-     // referenceToIsIndexed: {},   
+     referenceToIsIndexed: {},   
         
      // Maps id to sha256AndLength, array (but should ideally only be one)
      idToReferences: {},
@@ -42,18 +42,24 @@ function addToIndex(indexType, index, key, itemReference) {
     itemsForKey.push(itemReference);
 }
 
+function referenceIsIndexed(reference) {
+    return indexes.referenceToIsIndexed[reference] === true;
+}
+
 function addToIndexes(body, sha256AndLength) {
     var id = body.id;
     var tags = body.tags;
     var contentType = body.contentType;
     
+    if (referenceIsIndexed[sha256AndLength]) {
+        console.log("Already indexed " + sha256AndLength);
+        return false;
+    }
+    
+    indexes.referenceToIsIndexed[sha256AndLength] = true;
+    
     if (id) {
         if (indexes.idToReferences[id]) {
-            // Already indexed this item
-            if (indexes.idToReferences[id] !== sha256AndLength) {
-                console.log("Already indexed " + sha256AndLength);
-                return;
-            }
             console.log("ERROR: duplicate reference to ID in %s and %s", indexes.idToReferences[id], sha256AndLength);
         }
         addToIndex("id", indexes.idToReferences, "" + id, sha256AndLength);
@@ -67,6 +73,8 @@ function addToIndexes(body, sha256AndLength) {
     if (contentType) {
         addToIndex("contentType", indexes.contentTypeToReferences, "" + contentType, sha256AndLength);
     }
+    
+    return true;
 }
 
 /*
@@ -102,17 +110,29 @@ function sanitizeFileName(fileName) {
 
 // TODO: use nested directories so can support lots of files better
 
+function sendFailureMessage(response, code, message, extra) {
+    var sending = {status: code, error: message};
+    if (extra) {
+        for (var key in extra) {
+            sending[key] = extra[key];
+        }
+    }
+    response.status(code).send(JSON.stringify(sending));
+    return false;
+}
+
 function returnResource(sha256AndLength, response) {
+    if (!referenceIsIndexed(sha256AndLength)) {
+        return sendFailureMessage(response, 404, "Not found: " + sha256AndLength);
+    }
+    
     // TODO: Make asynchronous
     var contentBuffer;
     try {
       contentBuffer = fs.readFileSync(serverDataDirectory + sha256AndLength + ".pce");
     } catch (error) {
         // TODO: Should check what sort of error and respond accordingly
-        response.status(404)  // HTTP status 404: NotFound
-        .send('Not found: ' + error);
-        // response.json({status: 'FAILED', message: 'Some sort of exception when reading: ' + error, sha256: sha256AndLength});
-        return;
+        return sendFailureMessage(response, 500, "Server error: " + error);
     }
 
     // TODO: Probably can send buffer or file directly?
@@ -132,13 +152,16 @@ app.get(apiBaseURL + '/resources/:sha256AndLength', function (request, response)
 
 app.post(apiBaseURL + '/resources/:sha256AndLength', function (request, response) {
     // console.log("POST", request.url, request.body);
+    
+    if (referenceIsIndexed(request.params.sha256AndLength)) {
+        return sendFailureMessage(response, 409, "Conflict: The resource already exists on the server", {sha256AndLength: request.params.sha256AndLength});
+    }
+                   
     var sha256 = request.sha256;
     // console.log("sha256:", sha256);
     
     if (!request.rawBodyBuffer) {
-        response.status(406)  // HTTP status 406: Not acceptable
-        .send('{error: "Not acceptable: post is missing JSON Content-Type body"}');
-        return;
+        return sendFailureMessage(response, 406, "Not acceptable: post is missing JSON Content-Type body");
     }
     
     var length = request.rawBodyBuffer.length;
@@ -149,9 +172,7 @@ app.post(apiBaseURL + '/resources/:sha256AndLength', function (request, response
     console.log("==== POST: ", request.url, sha256AndLength);
     
     if (sha256AndLength !== request.params.sha256AndLength) {
-        response.status(406)  // HTTP status 406: Not acceptable
-        .send('{error: "Not acceptable: sha256AndLength of content does not match that of request url"}');
-        return;
+        return sendFailureMessage(response, 406, "Not acceptable: sha256AndLength of content does not match that of request url");
     }
 
     // TODO: Make asynchronous
@@ -159,10 +180,7 @@ app.post(apiBaseURL + '/resources/:sha256AndLength', function (request, response
       fs.writeFileSync(serverDataDirectory + sha256AndLength + ".pce", request.rawBodyBuffer);
     } catch (error) {
         // TODO: Should check what sort of error and respond accordingly
-        response.status(500)  // HTTP status 500: Server error
-        .send('{error: "Server error: ' + error + '"}');
-        // response.json({status: 'FAILED', message: 'Some sort of exception when writing: ' + error, sha256: sha256});
-        return;
+        return sendFailureMessage(response, 500, "Server error: ' + error + '");
     }
     
     // TODO: Maybe reject new resource if the ID already exists?
@@ -180,8 +198,7 @@ app.get(apiBaseURL + '/indexes/id/:id', function (request, response) {
     
     // It the request ID is not available, return not found error
     if (!sha256AndLengthList || sha256AndLengthList.length === 0) {
-        response.status(404)  // HTTP status 404: Not found
-        .send('{error: "Not found"}');
+        return sendFailureMessage(response, 404, "Not found");
     }
     
     // Return the first -- should signal error if more than one?
@@ -210,6 +227,7 @@ function endsWith(str, suffix) {
 
 function reindexAllResources() {
     console.log("reindexAllResources");
+    indexes.referenceToIsIndexed = {};
     indexes.idToReferences = {};
     indexes.tagToReferences = {};
     indexes.contentTypeToReferences = {};
