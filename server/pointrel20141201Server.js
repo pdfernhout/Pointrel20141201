@@ -18,14 +18,21 @@ var app = express();
 
 var apiBaseURL = '/api/pointrel20141201';
 
-// Maps id to sha256AndLength, singular
-var idIndex = {};
+var indexes = {
+     // Maps whether an item was added to the indexes (use to quickly tell if it exists)
+     // referenceToIsIndexed: {},   
+        
+     // Maps id to sha256AndLength, array (but should ideally only be one)
+     idToReferences: {},
 
-// Maps tags to sha256AndLength, array
-var tagIndex = {};
+     // Maps tags to sha256AndLength, array
+     tagToReferences: {},
 
-//Maps contentType to sha256AndLength, array
-var contentTypeIndex = {};
+     // Maps contentType to sha256AndLength, array
+     contentTypeToReferences: {}       
+};
+
+
 
 function addToIndex(indexType, index, key, itemReference) {
     // console.log("addToIndex", indexType, index, key, itemReference);
@@ -43,25 +50,24 @@ function addToIndexes(body, sha256AndLength) {
     var contentType = body.contentType;
     
     if (id) {
-        if (idIndex[id]) {
+        if (indexes.idToReferences[id]) {
             // Already indexed this item
-            if (idIndex[id] !== sha256AndLength) {
+            if (indexes.idToReferences[id] !== sha256AndLength) {
                 console.log("Already indexed " + sha256AndLength);
                 return;
             }
-            console.log("ERROR: duplicate reference to ID in %s and %s", idIndex[id], sha256AndLength);
+            console.log("ERROR: duplicate reference to ID in %s and %s", indexes.idToReferences[id], sha256AndLength);
         }
-        // idIndex[id] = sha256AndLength;
-        addToIndex("id", idIndex, "" + id, sha256AndLength);
+        addToIndex("id", indexes.idToReferences, "" + id, sha256AndLength);
     }
     if (tags) {
         for (var tagKey in tags) {
             var tag = tags[tagKey];
-            addToIndex("tags", tagIndex, "" + tag, sha256AndLength);
+            addToIndex("tags", indexes.tagToReferences, "" + tag, sha256AndLength);
         }
     }
     if (contentType) {
-        addToIndex("contentType", contentTypeIndex, "" + contentType, sha256AndLength);
+        addToIndex("contentType", indexes.contentTypeToReferences, "" + contentType, sha256AndLength);
     }
 }
 
@@ -172,7 +178,7 @@ app.get(apiBaseURL + '/indexes/id/:id', function (request, response) {
     
     var id = request.params.id;
     
-    var sha256AndLengthList = idIndex[id];
+    var sha256AndLengthList = indexes.idToReferences[id];
     
     if (!sha256AndLengthList || sha256AndLengthList.length === 0) {
         response.status(404)  // HTTP status 404: Not found
@@ -189,9 +195,9 @@ function endsWith(str, suffix) {
 
 function reindexAllResources() {
     console.log("reindexAllResources");
-    idIndex = {};
-    tagIndex = {};
-    contentTypeIndex = {};
+    indexes.idToReferences = {};
+    indexes.tagToReferences = {};
+    indexes.contentTypeToReferences = {};
     
     var fileNames = fs.readdirSync(serverDataDirectory);
     // console.log("fileNames", fileNames);
@@ -209,9 +215,9 @@ function reindexAllResources() {
 
 reindexAllResources();
 
-console.log("id index", idIndex);
-console.log("tag index", tagIndex);
-console.log("contentType index", contentTypeIndex);
+console.log("id index", indexes.idToReferences);
+console.log("tag index", indexes.tagToReferences);
+console.log("contentType index", indexes.contentTypeToReferences);
 
 // Create an HTTP service.
 var server = http.createServer(app).listen(8080, function () {
