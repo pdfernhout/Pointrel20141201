@@ -32,8 +32,6 @@ var indexes = {
      contentTypeToReferences: {}       
 };
 
-
-
 function addToIndex(indexType, index, key, itemReference) {
     // console.log("addToIndex", indexType, index, key, itemReference);
     var itemsForKey = index[key];
@@ -180,6 +178,7 @@ app.get(apiBaseURL + '/indexes/id/:id', function (request, response) {
     
     var sha256AndLengthList = indexes.idToReferences[id];
     
+    // It the request ID is not available, return not found error
     if (!sha256AndLengthList || sha256AndLengthList.length === 0) {
         response.status(404)  // HTTP status 404: Not found
         .send('{error: "Not found"}');
@@ -187,6 +186,22 @@ app.get(apiBaseURL + '/indexes/id/:id', function (request, response) {
     
     // Return the first -- should signal error if more than one?
     return response.json({status: 'OK', message: "Index for ID", idRequested: id, items: sha256AndLengthList});
+});
+
+app.get(apiBaseURL + '/indexes/tag/:tag', function (request, response) {
+    console.log("==== GET by tag", request.url);
+    
+    var tag = request.params.tag;
+    
+    var sha256AndLengthList = indexes.tagToReferences[tag];
+    
+    // It's not an error if there are no items for a tag -- just return an empty list
+    if (!sha256AndLengthList) {
+        sha256AndLengthList = [];
+    }
+    
+    // Return the first -- should signal error if more than one?
+    return response.json({status: 'OK', message: "Index for Tag", tagRequested: tag, items: sha256AndLengthList});
 });
 
 function endsWith(str, suffix) {

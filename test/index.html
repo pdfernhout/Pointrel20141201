@@ -13,6 +13,7 @@ require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/dig
     var apiPath = "/api/pointrel20141201/";
     var resourcesPath = apiPath + "resources/";
     var idIndexPath = apiPath + "indexes/id/";
+    var tagIndexPath = apiPath + "indexes/tag/";
     
     function pointrel_put(item, callback) {
         console.log("pointrel_put", item);
@@ -54,9 +55,25 @@ require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/dig
     }
     
     function pointrel_queryByID(id, callback) {
-        console.log("pointrel_itemsForID", id);
+        console.log("pointrel_queryByID", id);
         
         xhr.get(idIndexPath + id, {
+            handleAs: "text"
+        }).then(function(data) {
+            // OK
+            callback(null, JSON.parse(data));
+        }, function(error) {
+            // Error
+            callback(error, null);
+        }, function(event) {
+            // Handle a progress event from the request if the browser supports XHR2
+        });
+    }
+    
+    function pointrel_queryByTag(tag, callback) {
+        console.log("pointrel_queryByTag", tag);
+        
+        xhr.get(tagIndexPath + tag, {
             handleAs: "text"
         }).then(function(data) {
             // OK
@@ -105,7 +122,17 @@ require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/dig
     
     pointrel_queryByID("hello world", function(error, queryResult) {
         if (error) { console.log("error", error); return;}
-        console.log("Got queryResult", queryResult);
+        console.log("Got queryResult for id 'hello world'", queryResult);
+    });
+    
+    pointrel_queryByTag("test", function(error, queryResult) {
+        if (error) { console.log("error", error); return;}
+        console.log("Got queryResult for tag 'test'", queryResult);
+    });
+    
+    pointrel_queryByTag("test-nonexistent-tag", function(error, queryResult) {
+        if (error) { console.log("error", error); return;}
+        console.log("Got queryResult for tag 'test-nonexistent-tag'", queryResult);
     });
 });
 
