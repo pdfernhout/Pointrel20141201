@@ -14,34 +14,28 @@ require(["./pointrel20141201Client.js"], function(pointrel20141201Client) {
         
     var testObject1 = {foo: "bar", id: 3};
 
-    pointrel20141201Client.store(testObject1, function(error, result) {
+    pointrel20141201Client.storeInNewEnvelope(testObject1, "3", null, null, function(error, result) {
         if (error) { console.log("error", error); return;}
         
         console.log("Stored item", result.sha256AndLength);
       
-        var sha256AndLengthExpected1 = "719a0cd4333e1beec474f5dc5eb81434e7cbb7a0b720f1f506c17db5004832cb_29";
+        var sha256AndLengthExpected1 = "370a575ef3c65d833e204f3930680a931c5f911088d65b513f18f21e85228704_126";
       
         console.log("match expected 1?", sha256AndLengthExpected1 === result.sha256AndLength); 
       
         // Get an object by sha256AndLength
-        pointrel20141201Client.fetch(sha256AndLengthExpected1, function(error, item) {
+        pointrel20141201Client.fetchEnvelope(sha256AndLengthExpected1, function(error, item) {
             if (error) { console.log("error", error); return;}
             console.log("Got item", item);
         });
     });
     
-    var testObject2 = {
-        __type: "org.pointrel.pointrel20141201.ContentEnvelope",
-        id: "hello world",
-        tags: [
-            "test",
-            "pointrel://pages/hello-world.txt"
-        ],
-        contentType: "text/plain",
-        content: "Hello, world!"
-    };
-    
-    pointrel20141201Client.store(testObject2, function(error, result) {
+    var testObject2Content = "Hello, world!";
+    var testObject2ID = "hello world";
+    var testObject2Tags = ["test", "pointrel://pages/hello-world.txt"];
+    var testObject2ContentType = "text/plain";
+
+    pointrel20141201Client.storeInNewEnvelope(testObject2Content, testObject2ID, testObject2Tags, testObject2ContentType, function(error, result) {
         if (error) { console.log("error", error); return;}
         
         console.log("Stored item", result.sha256AndLength);
@@ -50,7 +44,7 @@ require(["./pointrel20141201Client.js"], function(pointrel20141201Client) {
       
         console.log("match expected 2?", sha256AndLengthExpected2 === result.sha256AndLength); 
       
-        pointrel20141201Client.fetch(result.sha256AndLength, function(error, item) {
+        pointrel20141201Client.fetchEnvelope(result.sha256AndLength, function(error, item) {
             if (error) { console.log("error", error); return;}
             console.log("Got item", item);
         });

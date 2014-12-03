@@ -14,10 +14,21 @@ define([
     var idIndexPath = apiPath + "indexes/id/";
     var tagIndexPath = apiPath + "indexes/tag/";
     
-    function pointrel_store(item, callback) {
-        console.log("pointrel_store", item);
+    function pointrel_storeInNewEnvelope(item, id, tags, contentType, callback) {
+        console.log("pointrel_store", id, tags, contentType, item);
         
-        var content = JSON.stringify(item, null, 2);
+        var envelope = {
+            __type: "org.pointrel.pointrel20141201.ContentEnvelope",
+        };
+        
+        // TODO: More validation to ensure strings for tags and that it is an array
+        if (id) envelope.id = "" + id;
+        if (tags) envelope.tags = tags;
+        if (contentType) envelope.contentType = "" + contentType;
+        
+        envelope.content = item;
+        
+        var content = JSON.stringify(envelope, null, 2);
         var itemReference = SHA256(content,digests.outputTypes.Hex) + "_" + content.length;
         
         console.log("will be posting '%s'", content);
@@ -44,7 +55,7 @@ define([
         });
     }
     
-    function pointrel_fetch(itemReference, callback) {
+    function pointrel_fetchEnvelope(itemReference, callback) {
         console.log("pointrel_fetch", itemReference);
         
         xhr.get(resourcesPath + itemReference, {
@@ -103,8 +114,8 @@ define([
     
     return {
         initialize: initialize,
-        store: pointrel_store,
-        fetch: pointrel_fetch,
+        storeInNewEnvelope: pointrel_storeInNewEnvelope,
+        fetchEnvelope: pointrel_fetchEnvelope,
         queryByID: pointrel_queryByID,
         queryByTag: pointrel_queryByTag
     };
