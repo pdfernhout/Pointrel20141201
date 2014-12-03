@@ -24,6 +24,7 @@ var resourceDirectorySegmentLength = 2;
 
 var apiBaseURL = '/api/pointrel20141201';
 var serverDataDirectory = "../server-data/";
+var resourcesDirectory = serverDataDirectory + "resources/";
 
 // Standard nodejs modules
 var fs = require('fs');
@@ -119,13 +120,18 @@ function reindexAllResources() {
     indexes.tagToReferences = {};
     indexes.contentTypeToReferences = {};
     
-    reindexAllResourcesInDirectory(serverDataDirectory);
+    reindexAllResourcesInDirectory(resourcesDirectory);
 }
 
 function reindexAllResourcesInDirectory(directory) {
     console.log("reindexAllResourcesInDirectory", directory);
     
-    var fileNames = fs.readdirSync(directory);
+    var fileNames;
+    try {
+        fileNames = fs.readdirSync(directory);
+    } catch(error) {
+        console.log("Problem reading directory %s error: %s", directory, error);
+    }
     console.log("fileNames", fileNames);
     for (var fileNameIndex in fileNames) {
         var fileName = fileNames[fileNameIndex];
@@ -164,19 +170,19 @@ function calculateStoragePath(baseDirectory, hexDigits, levelCount, segmentLengt
 /* Fetching and storing resources to disk */
 
 function fetchContentForReference(sha256AndLength, callback) {
-    var fileDirectory = calculateStoragePath(serverDataDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
+    var fileDirectory = calculateStoragePath(resourcesDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
     var fileName = sha256AndLength + resourceFileSuffix;
     fs.readFile(fileDirectory + fileName, "utf8", callback);
 }
 
 function fetchContentForReferenceSync(sha256AndLength) {
-    var fileDirectory = calculateStoragePath(serverDataDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
+    var fileDirectory = calculateStoragePath(resourcesDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
     var fileName = sha256AndLength + resourceFileSuffix;
     return fs.readFileSync(fileDirectory + fileName, "utf8");
 }
 
 function storeContentForReference(sha256AndLength, data, callback) {
-    var fileDirectory = calculateStoragePath(serverDataDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
+    var fileDirectory = calculateStoragePath(resourcesDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
     var fileName = sha256AndLength + resourceFileSuffix;
     // TODO: Write to a temp file first and then move it
     // TODO: maybe change permission mode from default?
@@ -191,7 +197,7 @@ function storeContentForReference(sha256AndLength, data, callback) {
 }
 
 function storeContentForReferenceSync(sha256AndLength, data) {
-    var fileDirectory = calculateStoragePath(serverDataDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
+    var fileDirectory = calculateStoragePath(resourcesDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
     var fileName = fileDirectory + sha256AndLength + resourceFileSuffix;
     // TODO: Write to a temp file first and then move it
     // TODO: maybe change permission mode from default?
@@ -374,7 +380,10 @@ function storeAndIndexItem(item, callback) {
 // Do indexing and set up default paths
 function initialize(app, config) {
     if (config) {
-        if (config.serverDataDirectory) serverDataDirectory = config.serverDataDirectory;
+        if (config.serverDataDirectory) {
+            serverDataDirectory = config.serverDataDirectory;
+            resourcesDirectory = serverDataDirectory + "resources/";
+        }
         if (config.apiBaseURL) apiBaseURL = config.apiBaseURL;
     }
     reindexAllResources();
