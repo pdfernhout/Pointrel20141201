@@ -37,8 +37,9 @@ require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/dig
                 console.log("message: '%s'", error.response.data);
                 // Assuming it's OK if the resource already exists -- we can assume it is identical and was added by someone else
                 callback(null, JSON.parse(error.response.data));
+            } else {
+                callback(error, null);
             }
-            callback(error, null);
         }, function(event) {
             // Handle a progress event from the request if the browser supports XHR2
         });
