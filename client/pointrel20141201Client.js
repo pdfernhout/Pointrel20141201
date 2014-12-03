@@ -17,7 +17,7 @@ define([
     function pointrel_store(item, callback) {
         console.log("pointrel_store", item);
         
-        var content = JSON.stringify(item);
+        var content = JSON.stringify(item, null, 2);
         var itemReference = SHA256(content,digests.outputTypes.Hex) + "_" + content.length;
         
         console.log("will be posting '%s'", content);
