@@ -1,4 +1,3 @@
-// Test at: http://localhost:8080/pointrel20141201/
 /*jslint node: true */
 "use strict";
 
