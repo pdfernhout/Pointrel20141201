@@ -15,7 +15,7 @@ define([
     var tagIndexPath = apiPath + "indexes/tag/";
     
     function pointrel_storeInNewEnvelope(item, id, tags, contentType, callback) {
-        console.log("pointrel_store", id, tags, contentType, item);
+        console.log("pointrel_storeInNewEnvelope", id, tags, contentType, item);
         
         var envelope = {
             __type: "org.pointrel.pointrel20141201.ContentEnvelope",
@@ -42,21 +42,25 @@ define([
             callback(null, JSON.parse(data));
         }, function(error) {
             // Error
+            console.log("pointrel_storeInNewEnvelope error", error);
             if (error.response.status === 409) {
-                console.log("already exists", error);
-                console.log("message: '%s'", error.response.data);
+                console.log("pointrel_storeInNewEnvelope already exists", error);
+                console.log("pointrel_storeInNewEnvelope message: '%s'", error.response.data);
                 // Assuming it's OK if the resource already exists -- we can assume it is identical and was added by someone else
                 callback(null, JSON.parse(error.response.data));
             } else {
+                console.log("pointrel_storeInNewEnvelope error not 409", error);
                 callback(error, null);
             }
         }, function(event) {
             // Handle a progress event from the request if the browser supports XHR2
         });
+        
+        return itemReference;
     }
     
     function pointrel_fetchEnvelope(itemReference, callback) {
-        console.log("pointrel_fetch", itemReference);
+        console.log("pointrel_fetchEnvelope", itemReference);
         
         xhr.get(resourcesPath + itemReference, {
             handleAs: "text"
@@ -65,6 +69,7 @@ define([
             callback(null, JSON.parse(data));
         }, function(error) {
             // Error
+            console.log("pointrel_fetchEnvelope error", error);
             callback(error, null);
         }, function(event) {
             // Handle a progress event from the request if the browser supports XHR2
