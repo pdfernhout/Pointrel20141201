@@ -7,95 +7,14 @@ Test of PUT-ing a resource.
 
 <script>
 console.log("starting up...");
-require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/digests/SHA256"], function(xhr, digests, SHA256) {
+require(["./pointrel20141201Client.js"], function(pointrel20141201Client) {
     "use strict";
     
-    var apiPath = "/api/pointrel20141201/";
-    var resourcesPath = apiPath + "resources/";
-    var idIndexPath = apiPath + "indexes/id/";
-    var tagIndexPath = apiPath + "indexes/tag/";
-    
-    function pointrel_put(item, callback) {
-        console.log("pointrel_put", item);
+    console.log("pointrel20141201Client", pointrel20141201Client);
         
-        var content = JSON.stringify(item);
-        var itemReference = SHA256(content,digests.outputTypes.Hex) + "_" + content.length;
-        
-        console.log("will be posting '%s'", content);
-        
-        xhr.post(resourcesPath + itemReference, {
-            handleAs: "text",
-            data: content,
-            headers: {'Content-Type': 'application/json; charset=UTF-8'}
-        }).then(function(data) {
-            // OK
-            callback(null, JSON.parse(data));
-        }, function(error) {
-            // Error
-            if (error.response.status === 409) {
-                console.log("already exists", error);
-                console.log("message: '%s'", error.response.data);
-                // Assuming it's OK if the resource already exists -- we can assume it is identical and was added by someone else
-                callback(null, JSON.parse(error.response.data));
-            } else {
-                callback(error, null);
-            }
-        }, function(event) {
-            // Handle a progress event from the request if the browser supports XHR2
-        });
-    }
-    
-    function pointrel_get(itemReference, callback) {
-        console.log("pointrel_get", itemReference);
-        
-        xhr.get(resourcesPath + itemReference, {
-            handleAs: "text"
-        }).then(function(data) {
-            // OK
-            callback(null, JSON.parse(data));
-        }, function(error) {
-            // Error
-            callback(error, null);
-        }, function(event) {
-            // Handle a progress event from the request if the browser supports XHR2
-        });
-    }
-    
-    function pointrel_queryByID(id, callback) {
-        console.log("pointrel_queryByID", id);
-        
-        xhr.get(idIndexPath + id, {
-            handleAs: "text"
-        }).then(function(data) {
-            // OK
-            callback(null, JSON.parse(data));
-        }, function(error) {
-            // Error
-            callback(error, null);
-        }, function(event) {
-            // Handle a progress event from the request if the browser supports XHR2
-        });
-    }
-    
-    function pointrel_queryByTag(tag, callback) {
-        console.log("pointrel_queryByTag", tag);
-        
-        xhr.get(tagIndexPath + tag, {
-            handleAs: "text"
-        }).then(function(data) {
-            // OK
-            callback(null, JSON.parse(data));
-        }, function(error) {
-            // Error
-            callback(error, null);
-        }, function(event) {
-            // Handle a progress event from the request if the browser supports XHR2
-        });
-    }
-    
     var testObject1 = {foo: "bar", id: 3};
 
-    pointrel_put(testObject1, function(error, result) {
+    pointrel20141201Client.store(testObject1, function(error, result) {
         if (error) { console.log("error", error); return;}
         
         console.log("Stored item", result.sha256AndLength);
@@ -105,14 +24,14 @@ require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/dig
         console.log("match expected 1?", sha256AndLengthExpected1 === result.sha256AndLength); 
       
         // Get an object by sha256AndLength
-        pointrel_get(sha256AndLengthExpected1, function(error, item) {
+        pointrel20141201Client.fetch(sha256AndLengthExpected1, function(error, item) {
             if (error) { console.log("error", error); return;}
             console.log("Got item", item);
         });
     });
     
     var testObject2 = {id: "hello world", tags: ["test", "pointrel://pages/hello-world.txt"], contentType: "text/plain", content: "Hello, world!"};
-    pointrel_put(testObject2, function(error, result) {
+    pointrel20141201Client.store(testObject2, function(error, result) {
         if (error) { console.log("error", error); return;}
         
         console.log("Stored item", result.sha256AndLength);
@@ -121,23 +40,23 @@ require(["dojo/request/xhr", 'dojox/encoding/digests/_base', "dojox/encoding/dig
       
         console.log("match expected 2?", sha256AndLengthExpected2 === result.sha256AndLength); 
       
-        pointrel_get(result.sha256AndLength, function(error, item) {
+        pointrel20141201Client.fetch(result.sha256AndLength, function(error, item) {
             if (error) { console.log("error", error); return;}
             console.log("Got item", item);
         });
     });
     
-    pointrel_queryByID("hello world", function(error, queryResult) {
+    pointrel20141201Client.queryByID("hello world", function(error, queryResult) {
         if (error) { console.log("error", error); return;}
         console.log("Got queryResult for id 'hello world'", queryResult);
     });
     
-    pointrel_queryByTag("test", function(error, queryResult) {
+    pointrel20141201Client.queryByTag("test", function(error, queryResult) {
         if (error) { console.log("error", error); return;}
         console.log("Got queryResult for tag 'test'", queryResult);
     });
     
-    pointrel_queryByTag("test-nonexistent-tag", function(error, queryResult) {
+    pointrel20141201Client.queryByTag("test-nonexistent-tag", function(error, queryResult) {
         if (error) { console.log("error", error); return;}
         console.log("Got queryResult for tag 'test-nonexistent-tag'", queryResult);
     });
