@@ -31,6 +31,7 @@ require(["./pointrel20141201Client.js"], function(pointrel20141201Client) {
     });
     
     var testObject2 = {
+        __type: "org.pointrel.pointrel20141201.ContentEnvelope",
         id: "hello world",
         tags: [
             "test",
@@ -40,27 +41,12 @@ require(["./pointrel20141201Client.js"], function(pointrel20141201Client) {
         content: "Hello, world!"
     };
     
-    /*
-    // Design issue: Put store content in envelope vs. modifying top level somehow...
-    var testObject3 = {
-        __pointrel20141201: {
-            id: "hello world",
-            tags: [
-                "test",
-                "pointrel://pages/hello-world.txt"
-            ],
-            contentType: "text/plain"
-        }
-        content: "Hello, world!"
-    };
-    */
-    
     pointrel20141201Client.store(testObject2, function(error, result) {
         if (error) { console.log("error", error); return;}
         
         console.log("Stored item", result.sha256AndLength);
       
-        var sha256AndLengthExpected2 = "1a4bbcc6801fd2034bc3f6dbaf5c06368bb5e3b94c2c94d580154f4afbe3b9d5_154";
+        var sha256AndLengthExpected2 = "ade2977d39fcc2a70920fc123ac9603148030fb9883d1e8e14a9bd6dbe46b04b_215";
       
         console.log("match expected 2?", sha256AndLengthExpected2 === result.sha256AndLength); 
       

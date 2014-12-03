@@ -12,6 +12,7 @@
 
 var version = "pointrel20141201-0.0.1";
 var resourceFileSuffix = ".pce";
+var signatureType = "org.pointrel.pointrel20141201.ContentEnvelope";
 
 var apiBaseURL = '/api/pointrel20141201';
 var serverDataDirectory = "../server-data/";
@@ -56,7 +57,7 @@ function referencesForContentType(contentType) {
 }
 
 function addToIndex(indexType, index, key, itemReference) {
-    console.log("addToIndex", indexType, index, key, itemReference);
+    // console.log("addToIndex", indexType, index, key, itemReference);
     var itemsForKey = index[key];
     if (!itemsForKey) {
         itemsForKey = [];
@@ -66,7 +67,7 @@ function addToIndex(indexType, index, key, itemReference) {
 }
 
 function addToIndexes(body, sha256AndLength) {
-    console.log("addToIndexes", sha256AndLength, body);
+    //  console.log("addToIndexes", sha256AndLength, body);
     var id = body.id;
     var tags = body.tags;
     var contentType = body.contentType;
@@ -77,6 +78,11 @@ function addToIndexes(body, sha256AndLength) {
     }
     
     indexes.referenceToIsIndexed[sha256AndLength] = true;
+    
+    if (body.__type !== signatureType) {
+        // console.log("Not indexing content as no __type signatureType of %s for: %s", signatureType, sha256AndLength);
+        return;
+    }
     
     if (id) {
         if (referencesForID(id)) {
@@ -220,7 +226,7 @@ function respondForResourcePost(request, response) {
     if (referenceIsIndexed(request.params.sha256AndLength)) {
         return sendFailureMessage(response, 409, "Conflict: The resource already exists on the server", {sha256AndLength: request.params.sha256AndLength});
     }
-                   
+                       
     var sha256 = request.sha256;
     // console.log("sha256:", sha256);
     
@@ -228,6 +234,10 @@ function respondForResourcePost(request, response) {
         return sendFailureMessage(response, 406, "Not acceptable: post is missing JSON Content-Type body");
     }
     
+    if (request.body.__type !== signatureType) {
+        return sendFailureMessage(response, 406, "Not acceptable: post is missing __type signatureType of " + signatureType);
+    }
+
     var length = request.rawBodyBuffer.length;
     
     // Probably should validate content as utf8 and valid JSON and so on...
@@ -289,6 +299,11 @@ function respondForTag(request, response) {
 
 // Intended for module users
 function storeAndIndexItem(item, callback) {
+    if (item.__type !== signatureType) {
+        // Error
+        callback("Item is missing __type signatureType of " + signatureType);
+    }
+    
     var itemString = JSON.stringify(item);
     var sha256 = calculateSHA256(itemString);
     var sha256AndLength = sha256 + "_" + itemString.length;
