@@ -1,4 +1,4 @@
-// Test at: http://localhost:8080/pointrel20141201/
+// Test at: http://localhost:8080/test
 /*jslint node: true */
 "use strict";
 
@@ -11,7 +11,7 @@ var express = require('express');
 var app = express();
 
 // Pointrel support modules
-var pointrel20141201ServerSupport = require("./pointrel20141201ServerSupport");
+var pointrel20141201Server = require("./pointrel20141201Server");
     
 /*
 app.use("/$",   function(req, res) {
@@ -24,7 +24,7 @@ app.use("/$",   function(req, res) {
 app.use("/test/pointrel20141201Client.js", express.static(__dirname + "/../client/pointrel20141201Client.js"));
 app.use("/test", express.static(__dirname + "/../test"));
 
-pointrel20141201ServerSupport.initialize(app);
+pointrel20141201Server.initialize(app);
 
 // Create an HTTP service.
 var server = http.createServer(app).listen(8080, function () {
