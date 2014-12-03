@@ -14,6 +14,14 @@ var version = "pointrel20141201-0.0.1";
 var resourceFileSuffix = ".pce";
 var signatureType = "org.pointrel.pointrel20141201.ContentEnvelope";
 
+// resourceDirectoryLevels of 2 should be good for about 6 million resource files or so (256 * 256 * 100)
+// with at most 100 in a directory if sha256 is distributed randomly
+// Increase it before using the server to store any data if you expect more files than that
+// If the files grow beyond that, there will be more and more files in leaf directories,
+// which should work but becomes inefficient, including when doing an ls in a directory
+var resourceDirectoryLevels = 2;
+var resourceDirectorySegmentLength = 2;
+
 var apiBaseURL = '/api/pointrel20141201';
 var serverDataDirectory = "../server-data/";
 
@@ -23,6 +31,7 @@ var crypto = require('crypto');
 
 // The modules below require npm installation
 var bodyParser = require('body-parser');
+var mkdirp = require('mkdirp');
 
 /* Indexing */
 
@@ -110,13 +119,19 @@ function reindexAllResources() {
     indexes.tagToReferences = {};
     indexes.contentTypeToReferences = {};
     
-    var fileNames = fs.readdirSync(serverDataDirectory);
+    reindexAllResourcesInDirectory(serverDataDirectory);
+}
+
+function reindexAllResourcesInDirectory(directory) {
+    console.log("reindexAllResourcesInDirectory", directory);
+    
+    var fileNames = fs.readdirSync(directory);
     console.log("fileNames", fileNames);
     for (var fileNameIndex in fileNames) {
         var fileName = fileNames[fileNameIndex];
         if (endsWith(fileName, resourceFileSuffix)) {
             console.log("Indexing: ", fileName);
-            try{
+            try {
                 var resourceContent = fetchContentForReferenceSync(fileName.substring(0, fileName.length - resourceFileSuffix.length));
                 var resourceObject = JSON.parse(resourceContent);
                 // console.log("resourceObject", resourceObject);
@@ -124,35 +139,72 @@ function reindexAllResources() {
             } catch(error) {
                 console.log("Problem indexing %s error: %s", fileName, error);
             }
-        } 
+        } else {
+            if (!startsWith(fileName, ".") && fileName.length === resourceDirectorySegmentLength) {
+                var isDirectory = fs.lstatSync(directory + fileName).isDirectory();
+                if (isDirectory) reindexAllResourcesInDirectory(directory + fileName + "/");
+            }
+        }
     }
 }
+
+function calculateStoragePath(baseDirectory, hexDigits, levelCount, segmentLength) {
+    // console.log("calculateStoragePath", baseDirectory, hexDigits, levelCount, segmentLength);
+    var fullPath = baseDirectory;
+    for (var level = 0; level < levelCount; level++) {
+        var startOfSegment = level * segmentLength;
+        var segment = hexDigits.substring(startOfSegment, startOfSegment + segmentLength);
+        fullPath = fullPath + segment + "/";
+    }
+
+    // console.log("calculated path:", fullPath);
+    return fullPath;
+  }
 
 /* Fetching and storing resources to disk */
 
 function fetchContentForReference(sha256AndLength, callback) {
-    var fileName = serverDataDirectory + sha256AndLength + resourceFileSuffix;
-    fs.readFile(fileName, "utf8", callback);
+    var fileDirectory = calculateStoragePath(serverDataDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
+    var fileName = sha256AndLength + resourceFileSuffix;
+    fs.readFile(fileDirectory + fileName, "utf8", callback);
 }
 
 function fetchContentForReferenceSync(sha256AndLength) {
-    var fileName = serverDataDirectory + sha256AndLength + resourceFileSuffix;
-    return fs.readFileSync(fileName, "utf8");
+    var fileDirectory = calculateStoragePath(serverDataDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
+    var fileName = sha256AndLength + resourceFileSuffix;
+    return fs.readFileSync(fileDirectory + fileName, "utf8");
 }
 
 function storeContentForReference(sha256AndLength, data, callback) {
-    var fileName = serverDataDirectory + sha256AndLength + resourceFileSuffix;
- // TODO: maybe change permission mode from default?
-    fs.writeFile(fileName, data, "utf8", callback);
+    var fileDirectory = calculateStoragePath(serverDataDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
+    var fileName = sha256AndLength + resourceFileSuffix;
+    // TODO: Write to a temp file first and then move it
+    // TODO: maybe change permission mode from default?
+    mkdirp(fileDirectory, function(error) {
+        if (error) {
+            if (callback) callback(error);
+            return;
+        }
+        console.log("writing file: %s", fileDirectory + fileName);
+        fs.writeFile(fileDirectory + fileName, data, "utf8", callback);
+    });
 }
 
 function storeContentForReferenceSync(sha256AndLength, data) {
-    var fileName = serverDataDirectory + sha256AndLength + resourceFileSuffix;
+    var fileDirectory = calculateStoragePath(serverDataDirectory, sha256AndLength, resourceDirectoryLevels, resourceDirectorySegmentLength);
+    var fileName = fileDirectory + sha256AndLength + resourceFileSuffix;
+    // TODO: Write to a temp file first and then move it
     // TODO: maybe change permission mode from default?
-    fs.writeFileSync(fileName, data, "utf8");
+    mkdirp.sync(fileDirectory);
+    console.log("writing file: %s", fileDirectory + fileName);
+    fs.writeFileSync(fileDirectory + fileName, data, "utf8");
 }
 
 /* Utility */
+
+function startsWith(str, prefix) {
+    return str.indexOf(prefix) === 0;
+}
 
 function endsWith(str, suffix) {
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
