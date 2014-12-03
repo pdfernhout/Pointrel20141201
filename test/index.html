@@ -30,7 +30,31 @@ require(["./pointrel20141201Client.js"], function(pointrel20141201Client) {
         });
     });
     
-    var testObject2 = {id: "hello world", tags: ["test", "pointrel://pages/hello-world.txt"], contentType: "text/plain", content: "Hello, world!"};
+    var testObject2 = {
+        id: "hello world",
+        tags: [
+            "test",
+            "pointrel://pages/hello-world.txt"
+        ],
+        contentType: "text/plain",
+        content: "Hello, world!"
+    };
+    
+    /*
+    // Design issue: Put store content in envelope vs. modifying top level somehow...
+    var testObject3 = {
+        __pointrel20141201: {
+            id: "hello world",
+            tags: [
+                "test",
+                "pointrel://pages/hello-world.txt"
+            ],
+            contentType: "text/plain"
+        }
+        content: "Hello, world!"
+    };
+    */
+    
     pointrel20141201Client.store(testObject2, function(error, result) {
         if (error) { console.log("error", error); return;}
         
