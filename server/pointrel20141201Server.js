@@ -1,18 +1,29 @@
 /*jslint node: true */
 "use strict";
 
+/* "The only reason for time is so that everything doesn't happen at once. (Albert Einstein)" */
+
 // Simplified version of Pointrel system (building on Pointrel20130202)
 // Stores JSON resources in files
 // Keeps indexes for them in memory
-// indexes created from parsing all resources at startup
+// Indexes created from parsing all resources at startup
 // Trying to avoid maintaining log files which could get corrupted
 // Also making this module usable directly from server code in nodejs
 
-// TODO: use nested directories so can support lots of files better
+// This version relies on using timestamps to get latest version of content
+// It will not index stored resources with timestamps in the future, and will reject them when added via API
+// This is to prevent a resource significantly in the future always being returned as the "latest" version for an ID or tag
+// Otherwise, that would be an error that can't be recovered from short of deleting the resource file manually and restarting the server
 
-var version = "pointrel20141201-0.0.1";
+// The constant maximumTimeDriftAllowed_ms is the maximum time drift allowed for resources to be in the future to allow for slightly different clocks
+// The more frequently records are written to the server, the smaller this value should be
+var maximumTimeDriftAllowed_ms = 10000;
+
+// TODO: Use internet time service somehow to check if server time looks close enough to OK when startup
+
+var version = "pointrel20141201-0.0.2";
 var resourceFileSuffix = ".pce";
-var signatureType = "org.pointrel.pointrel20141201.ContentEnvelope";
+var signatureType = "org.pointrel.pointrel20141201.PointrelContentEnvelope";
 
 // resourceDirectoryLevels of 2 should be good for about 6 million resource files or so (256 * 256 * 100)
 // with at most 100 in a directory if sha256 is distributed randomly
@@ -94,20 +105,31 @@ function addToIndexes(body, sha256AndLength) {
         return;
     }
     
+    // TODO: Maybe store body content in indexEntry if it is small... (< 10K?)
+    // Put in essential envelope data
+    var indexEntry = {sha256AndLength: sha256AndLength};
+    if (body.id) indexEntry.id = body.id;
+    if (body.tags) indexEntry.tags = body.tags;
+    if (body.contentType) indexEntry.contentType = body.contentType;
+    if (body.author) indexEntry.author = body.author;
+    if (body.committer) indexEntry.committer = body.committer;
+    if (body.timestamp) indexEntry.timestamp = body.timestamp;
+    
     if (id) {
-        if (referencesForID(id)) {
-            console.log("ERROR: duplicate reference to ID in %s and %s", indexes.idToReferences[id], sha256AndLength);
-        }
-        addToIndex("id", indexes.idToReferences, "" + id, sha256AndLength);
+        // Multiple resources with the same ID are now assumed to be versions of the same abstract entity
+        // if (referencesForID(id)) {
+        //    console.log("ERROR: duplicate reference to ID in %s and %s", JSON.stringify(indexes.idToReferences[id]), sha256AndLength);
+        //}
+        addToIndex("id", indexes.idToReferences, "" + id, indexEntry);
     }
     if (tags) {
         for (var tagKey in tags) {
             var tag = tags[tagKey];
-            addToIndex("tags", indexes.tagToReferences, "" + tag, sha256AndLength);
+            addToIndex("tags", indexes.tagToReferences, "" + tag, indexEntry);
         }
     }
     if (contentType) {
-        addToIndex("contentType", indexes.contentTypeToReferences, "" + contentType, sha256AndLength);
+        addToIndex("contentType", indexes.contentTypeToReferences, "" + contentType, indexEntry);
     }
     
     return true;
@@ -121,10 +143,19 @@ function reindexAllResources() {
     indexes.contentTypeToReferences = {};
     
     reindexAllResourcesInDirectory(resourcesDirectory);
+    
+    var resourceCount = 0;
+    for (var key in indexes.referenceToIsIndexed) resourceCount++;
+    console.log("Indexed %s resources", resourceCount);
+    
+    // console.log("id index", indexes.idToReferences);
+    // console.log("tag index", indexes.tagToReferences);
+    // console.log("contentType index", indexes.contentTypeToReferences);
 }
 
 function reindexAllResourcesInDirectory(directory) {
-    console.log("reindexAllResourcesInDirectory", directory);
+    // console.log("reindexAllResourcesInDirectory", directory);
+    var maximumAllowedTimestamp = calculateMaximumAllowedTimestamp();
     
     var fileNames;
     try {
@@ -132,16 +163,23 @@ function reindexAllResourcesInDirectory(directory) {
     } catch(error) {
         console.log("Problem reading directory %s error: %s", directory, error);
     }
-    console.log("fileNames", fileNames);
+    // console.log("fileNames", fileNames);
     for (var fileNameIndex in fileNames) {
         var fileName = fileNames[fileNameIndex];
         if (endsWith(fileName, resourceFileSuffix)) {
-            console.log("Indexing: ", fileName);
+            // console.log("Indexing: ", fileName);
             try {
                 var resourceContent = fetchContentForReferenceSync(fileName.substring(0, fileName.length - resourceFileSuffix.length));
                 var resourceObject = JSON.parse(resourceContent);
                 // console.log("resourceObject", resourceObject);
-                addToIndexes(resourceObject, fileName.substring(0, fileName.length-4));
+                // Reject items with a future timestamp
+                var envelopeTimestamp = resourceObject.timestamp;
+                if (!isTimestampInFuture(envelopeTimestamp, maximumAllowedTimestamp)) {
+                    addToIndexes(resourceObject, fileName.substring(0, fileName.length-4));
+                } else {
+                    return console.log("Item not indexed: " + fileName + " because resource envelope timestamp of: " + envelopeTimestamp + " is later than the currently maximumAllowedTimestamp of: " + maximumAllowedTimestamp);
+                    
+                }
             } catch(error) {
                 console.log("Problem indexing %s error: %s", fileName, error);
             }
@@ -227,7 +265,8 @@ function sanitizeFileName(fileName) {
     return fileName.replace(/\s/g, "_").replace(/\.[\.]+/g, "_").replace(/[^\w_\.\-]/g, "_");
 }
 
-//For JSON body parser to preserve original content send via POST
+/*
+//For JSON body parser to preserve original content send via PUT
 function bodyParserVerifyAddSHA256(request, result, buffer, encoding) {
     
     request.sha256 = calculateSHA256(buffer);
@@ -236,6 +275,7 @@ function bodyParserVerifyAddSHA256(request, result, buffer, encoding) {
     request.rawBodyBuffer = buffer;
     // console.log("rawBodyBuffer", request.rawBodyBuffer);
 }
+*/
 
 function sendFailureMessage(response, code, message, extra) {
     var sending = {status: code, error: message};
@@ -264,10 +304,20 @@ function returnResource(sha256AndLength, response) {
     });
 }
 
+function getCurrentTimestamp() {
+    return new Date().toISOString();
+}
+
+function calculateMaximumAllowedTimestamp() {
+    var currentTime = new Date();
+    var futureTime = new Date(currentTime.getTime() + maximumTimeDriftAllowed_ms);
+    return futureTime.toISOString();
+}
+
 /* Responding to requests */
 
 function respondWithStatus(request, response) {
-    response.json({status: 'OK', version: version});
+    response.json({status: 'OK', version: version, currentTimestamp: getCurrentTimestamp()});
 }
 
 function respondForResourceGet(request, response) {
@@ -278,8 +328,19 @@ function respondForResourceGet(request, response) {
     returnResource(sha256AndLength, response);
 }
 
-function respondForResourcePost(request, response) {
-    // console.log("POST", request.url, request.body);
+// To use: var maximumAllowedTimestamp = calculateMaximumAllowedTimestamp();
+function isTimestampInFuture(timestamp, maximumAllowedTimestamp) {
+    if (!timestamp) return false;
+    // TODO: Could check timestamp format
+    var isRequestTimestampIsInFuture = timestamp > maximumAllowedTimestamp;
+    // console.log("Checking timestamp request: %s maximumAllowedTimestamp: %s isRequestTimestampIsInFuture: %s",  timestamp, maximumAllowedTimestamp,  isRequestTimestampIsInFuture);
+    return isRequestTimestampIsInFuture;
+}
+
+/* 
+
+function respondForResourcePut(request, response) {
+    // console.log("PUT", request.url, request.body);
     
     if (referenceIsIndexed(request.params.sha256AndLength)) {
         return sendFailureMessage(response, 409, "Conflict: The resource already exists on the server", {sha256AndLength: request.params.sha256AndLength});
@@ -289,19 +350,27 @@ function respondForResourcePost(request, response) {
     // console.log("sha256:", sha256);
     
     if (!request.rawBodyBuffer) {
-        return sendFailureMessage(response, 406, "Not acceptable: post is missing JSON Content-Type body");
+        return sendFailureMessage(response, 406, "Not acceptable: request is missing JSON Content-Type body");
     }
     
     if (request.body.__type !== signatureType) {
-        return sendFailureMessage(response, 406, "Not acceptable: post is missing __type signatureType of " + signatureType);
+        return sendFailureMessage(response, 406, "Not acceptable: request is missing __type signatureType of " + signatureType);
     }
-
+    
+    // Check here if using a future time and reject if so
+    // TODO: allow perhaps for some configurable limited time drift like 10 seconds)
+    var requestTimestamp = request.body.timestamp;
+    var maximumAllowedTimestamp = calculateMaximumAllowedTimestamp();
+    if (isTimestampInFuture(requestTimestamp, maximumAllowedTimestamp)) {
+        return sendFailureMessage(response, 406, "Not acceptable: Please check you computer's clock; request timestamp of: " + requestTimestamp + " is later that the currently maximum allowed timestamp of: " + maximumAllowedTimestamp);
+    }
+    
     var length = request.rawBodyBuffer.length;
     
     // Probably should validate content as utf8 and valid JSON and so on...
     
     var sha256AndLength = sha256 + "_" + length;
-    console.log("==== POST: ", request.url, sha256AndLength);
+    console.log("==== PUT: ", request.url, sha256AndLength);
     
     if (sha256AndLength !== request.params.sha256AndLength) {
         return sendFailureMessage(response, 406, "Not acceptable: sha256AndLength of content does not match that of request url");
@@ -321,20 +390,81 @@ function respondForResourcePost(request, response) {
     });
 }
 
+*/
+
+function respondForResourcePost(request, response) {
+    // console.log("POST", request.url, request.body);
+    
+    var requestEnvelope = request.body;
+    
+    if (!requestEnvelope) {
+        return sendFailureMessage(response, 406, "Not acceptable: post is missing JSON Content-Type body");
+    }
+    
+    if (requestEnvelope.__type !== signatureType) {
+        return sendFailureMessage(response, 406, "Not acceptable: post requestEnvelope is missing __type signatureType of " + signatureType);
+    }
+    
+    var requestTimestamp = requestEnvelope.timestamp;
+    if (requestTimestamp !== undefined) {
+        if (requestTimestamp === true) {
+            // Add server timestamp
+            requestEnvelope.timestamp = getCurrentTimestamp();
+        } else {
+            // Check if using a future time and reject if so
+            // TODO: allow perhaps for some configurable limited time drift like 10 seconds)
+            var maximumAllowedTimestamp = calculateMaximumAllowedTimestamp();
+            if (isTimestampInFuture(requestTimestamp, maximumAllowedTimestamp)) {
+                return sendFailureMessage(response, 406, "Not acceptable: Please check you computer's clock; request timestamp of: " + requestTimestamp + " is further in the future than the currently maximum allowed timestamp of: " + maximumAllowedTimestamp);
+            }
+        }
+    }
+      
+    // TODO: Maybe add other things, like requester IP or user ID?
+       
+    // Pretty printing it even though wasteful -- easier for developer to look at
+    var content = JSON.stringify(requestEnvelope, null, 2);
+    var buffer = new Buffer(content, "utf8");
+    
+    var sha256 = calculateSHA256(buffer);
+    var sha256AndLength = sha256 + "_" + buffer.length;
+    
+    console.log("sha256AndLength calculated for POST request", sha256AndLength);
+    
+    if (referenceIsIndexed(sha256AndLength)) {
+        return sendFailureMessage(response, 409, "Conflict: The resource already exists on the server", {sha256AndLength: sha256AndLength});
+    }
+    
+    console.log("==== POST: ", request.url, sha256AndLength);
+    
+    storeContentForReference(sha256AndLength, buffer, function(error) {
+        // TODO: Maybe reject new resource if the ID already exists?
+
+        if (error) {
+            return sendFailureMessage(response, 500, "Server error: ' + error + '");
+        }
+        
+        addToIndexes(request.body, sha256AndLength);
+        
+        return response.json({status: 'OK', message: 'Wrote content', sha256AndLength: sha256AndLength});
+        
+    });
+}
+
 function respondForID(request, response) {
     console.log("==== GET by id", request.url);
     
     var id = request.params.id;
     
-    var sha256AndLengthList = referencesForID(id);
+    var indexEntryList = referencesForID(id);
     
     // It the request ID is not available, return not found error
-    if (!sha256AndLengthList || sha256AndLengthList.length === 0) {
+    if (!indexEntryList || indexEntryList.length === 0) {
         return sendFailureMessage(response, 404, "Not found");
     }
     
     // Return the first -- should signal error if more than one?
-    return response.json({status: 'OK', message: "Index for ID", idRequested: id, items: sha256AndLengthList});
+    return response.json({status: 'OK', message: "Index for ID", idRequested: id, indexEntries: indexEntryList});
 }
 
 function respondForTag(request, response) {
@@ -342,15 +472,15 @@ function respondForTag(request, response) {
     
     var tag = request.params.tag;
     
-    var sha256AndLengthList = referencesForTag(tag);
+    var indexEntryList = referencesForTag(tag);
     
     // It's not an error if there are no items for a tag -- just return an empty list
-    if (!sha256AndLengthList) {
-        sha256AndLengthList = [];
+    if (!indexEntryList) {
+        indexEntryList = [];
     }
     
     // Return the first -- should signal error if more than one?
-    return response.json({status: 'OK', message: "Index for Tag", tagRequested: tag, items: sha256AndLengthList});
+    return response.json({status: 'OK', message: "Index for Tag", tagRequested: tag, indexEntries: indexEntryList});
 }
 
 /* Other */
@@ -388,18 +518,15 @@ function initialize(app, config) {
     }
     reindexAllResources();
 
-    console.log("id index", indexes.idToReferences);
-    console.log("tag index", indexes.tagToReferences);
-    console.log("contentType index", indexes.contentTypeToReferences);
-    
     app.use(bodyParser.json({
-        verify: bodyParserVerifyAddSHA256
+        // verify: bodyParserVerifyAddSHA256
     }));
     
-    app.use(apiBaseURL + '/status', respondWithStatus);
+    app.use(apiBaseURL + '/server/status', respondWithStatus);
     
     app.get(apiBaseURL + '/resources/:sha256AndLength', respondForResourceGet);
-    app.post(apiBaseURL + '/resources/:sha256AndLength', respondForResourcePost);
+    // app.put(apiBaseURL + '/resources/:sha256AndLength', respondForResourcePut);
+    app.post(apiBaseURL + '/resources', respondForResourcePost);
     app.get(apiBaseURL + '/indexes/id/:id', respondForID);
     app.get(apiBaseURL + '/indexes/tag/:tag', respondForTag);
 }
