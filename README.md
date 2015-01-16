@@ -10,8 +10,8 @@ It supports serving web pages as well as retrieving resources using these indexe
 
 This version of the Pointrel system was created for use by the NarraCoach/PNIWorkbook/NarraKit
 software intended to accompany Cynthia Kurtz's Working With Stories book.
-It is being developed in conjunction with that sofwtare, so sometimes
-several changes are being merged back from that software as one bigger commit in this project.
+It is being developed in conjunction with that software, so sometimes
+several changes are being merged back from that project as one bigger commit into this project.
 
 The intent here is not to support a huge amount of data.
 The emphasis is more on data-storage-and-retrieval software that is easy to install and maintain.
