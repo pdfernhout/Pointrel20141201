@@ -24,17 +24,49 @@ define([
      * 
      * Generally, the envelope should have an "id" that specifies what document this data is a version of. Most documents might only have one version,
      * but some might have several. Envelopes all have a timestamp of when they were created, which is used to determine which one is the "latest" for
-     * some ID or tag. They should also have a contentType which suggests how to interperet the JSON data (like a class name). Other information can
-     * be defined as well including "tags". Tags are roughly equivalent to containers that document version is stored in. To search for data, you can
-     * get envelope references back using either the id (with pointrel_queryByID) or the tags (using pointrel_queryByTag).
+     * some ID or tag. They should also have a contentType which suggests how to interperet the JSON data (like a class name).
+     * Other information can be defined as well.
      * 
-     * The convenience methods "loadLatestEnvelopeForID" and "loadLatestEnvelopeForTag" query for the latest envelope for the ID or tag and then
-     * retrieve it.
+     * One special type of metadata are "triples" which each consist of three fields (a, b, c) stored in an array.
+     * These three fields can be thought of initially as object, aspect, and value (similar to RDF).
+     * Triples can define "tags" by associating the document ID in the "a" field with "document:tag" in the "b" field
+     * and the tag string in the "c" field.
+     * For example, a tag called "my tag" could be added for a document called "test" by using the metadata:
+     *    { id: "test", triples: [{a: "test", b: "document:tag", c: "my tag"}] }
+     * Tags are roughly equivalent to containers that a document is stored in.
+     * The triples can be used in a lot more ways though.
+     * The triples are indexed in various ways and can be queried using an API.
+     * A typical query is to find the most recent "c" value for an "a" and a "b" field.
+     * Another typical query is to find all "c" values for an "a" and a "b" field.
+     * Back links (as a type of "transclusion") are also possible.
+     * So, you can search on all "a" values that have a "b" and a "c".
+     * The triples are stored in memory in relation to the indexes.
+     * So, while the fields are arbitrary length strings, ideally they should be short strings that specify UUIDs
+     * or they should be semantically meaningful relationship names or tags.
+     * Large amounts of content, such as a source code file should be stored in the content part of a document.
+     * Storing content seperately reduces the memory and CPU overhead of indexing.
+     * Triples provide a general purpose way to index associated content in the document.
+     * For example, a document could have every word or meaningful word-stem indexed using triples for quick lookup.
+     * However, triples can also be used stand-alone without specifying any document content.
+     * In that case, the document can be seen purely as a "transaction" adding triples to the system.
+     * Only the latest version of triples are indexed for a document based on the document timestamp.
+     * Previous indexed triples are removed when a later version of a document is encountered.
+     * So, to delete a triple, you can add a new version of the document that defined it without that triple.
+     * Triples maintain a reference to their defining document which should have a timestamp.
+     * Triples can also have their own timestamp though, using an optional "timestamp" field.
+     * As with document timestamps, documents may be rejected by the server if these timestamps are significantly in the future.
      * 
-     * The convenience methods "loadEnvelopesForID" and "loadEnvelopesForTag" with load all envelopes with the ID or tag. Those two methods take a
-     * referenceToEnvelopeMap argument which intially should be an empty dictionary. This will be filled in with the envelopes retrieved from the
-     * server. Previously retrieved items will not be retrieved again. They should not be changing, although in theory they could be deleted on the
-     * server.
+     * To search for data, you can get envelope references back using either the id (with pointrel_queryByID)
+     * or the tags (using pointrel_queryByTag) or by the triple search API. (TODO: More on triples API).
+     * 
+     * The convenience methods "loadLatestEnvelopeForID" and "loadLatestEnvelopeForTag" query for
+     * the latest envelope for the ID or tag and then retrieve it.
+     * 
+     * The convenience methods "loadEnvelopesForID" and "loadEnvelopesForTag" with load all envelopes with the ID or tag.
+     * Those two methods take a referenceToEnvelopeMap argument which intially should be an empty dictionary.
+     * This will be filled in with the envelopes retrieved from the server.
+     * Previously retrieved items (stored in the referenceToEnvelopeMap) will not be retrieved again.
+     * They should not be changing, although in theory they could be manually deleted on the server.
      * 
      * You can list all the IDs in use with "fetchIDs". This makes the full list of documents "discoverable".
      * TODO: This method is experimental, because since it returns all the IDs, if there are a lot, this may be a problem.
