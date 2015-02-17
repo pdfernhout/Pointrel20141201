@@ -7,7 +7,7 @@ Test of PUT-ing a resource.
 
 <script>
 console.log("starting up...");
-require(["./pointrel20141201Client.js"], function(pointrel20141201Client) {
+require(["/js/pointrel20141201Client.js"], function(pointrel20141201Client) {
     "use strict";
     
     console.log("pointrel20141201Client", pointrel20141201Client);
@@ -82,11 +82,10 @@ require(["./pointrel20141201Client.js"], function(pointrel20141201Client) {
     // Need to delay calls to ensure server has stored and indexed data before making next call
     // TODO: Could use test runner software
     test1();
-    setTimeout(test2, 1000);
-    setTimeout(test3, 2000);
-    setTimeout(test4, 3000);
-    setTimeout(test5, 4000);
-        
+    setTimeout(test2, 100);
+    setTimeout(test3, 200);
+    setTimeout(test4, 300);
+    setTimeout(test5, 400);
 });
 
 </script>

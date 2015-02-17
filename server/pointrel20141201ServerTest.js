@@ -21,8 +21,8 @@ app.use("/$",   function(req, res) {
 */
 
 // For testing only...
-app.use("/test/pointrel20141201Client.js", express.static(__dirname + "/../WebContent/js/pointrel20141201Client.js"));
 app.use("/test", express.static(__dirname + "/../test"));
+app.use("/", express.static(__dirname + "/../WebContent"));
 
 pointrel20141201Server.initialize(app);
 
