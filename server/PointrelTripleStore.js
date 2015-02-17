@@ -87,6 +87,7 @@ define(function() {
         removeTripleFromMap(this.ac, acKey, storedTriple);
     };
     
+    // Public API
     TripleStore.prototype.addDocument = function(document) {
         // remove previous document
         var oldDocumentInformation = this.documents[document.id];
@@ -117,4 +118,6 @@ define(function() {
             delete this.documents[document.id];
         }
     };
+    
+    return TripleStore;
 });
