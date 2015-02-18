@@ -34,6 +34,8 @@ define([
      * For example, a tag called "my tag" could be added for a document called "test" by using the metadata:
      *    { id: "test", triples: [{a: "test", b: "document:tag", c: "my tag"}] }
      * Tags are roughly equivalent to containers that a document is stored in.
+     * As a convenience, you can list tag strings in metadata for "tags" and they will be added as new triples in addition to any triples you supply.
+     * Example metadata that is equivalent to the above:  { id: "test", tags: ["my tag"] }
      * The triples can be used in a lot more ways though.
      * The triples are indexed in various ways and can be queried using an API.
      * A typical query is to find the most recent "c" value for an "a" and a "b" field.
@@ -139,8 +141,22 @@ define([
         }
         */
 
+
+        // TODO: More validation to ensure triples each look good and that it is an array
+        if (metadata.triples && metadata.triples.length > 0) envelope.triples = metadata.triples;
+        
         // TODO: More validation to ensure strings for tags and that it is an array
-        if (metadata.tags && metadata.tags.length > 0) envelope.tags = metadata.tags;
+        if (metadata.tags && metadata.tags.length > 0 && envelope.id) {
+            // Copy the array because we will be changing it
+            var triples = envelope.triples.slice();
+            for (var i = 0; i < metadata.tags.length; i++) {
+                var tag = metadata.tags[i];
+                if (!tag) continue;
+                triples.push({a: envelope.id, b: "document:tag", c: tag});
+            }
+            envelope.triples = triples;
+        }
+        
         
         if (metadata.contentType) envelope.contentType = "" + metadata.contentType;
         if (metadata.contentVersion) envelope.contentVersion = "" + metadata.contentVersion;
