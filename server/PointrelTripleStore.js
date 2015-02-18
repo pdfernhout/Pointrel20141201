@@ -110,7 +110,7 @@ TripleStore.prototype.removeTriple = function(storedTriple) {
 };
 
 // Public API
-TripleStore.prototype.addOrRemoveTriplesForDocument = function(document) {
+TripleStore.prototype.addOrRemoveTriplesForDocument = function(document, sha256AndLength) {
     // remove previous document
     var oldDocumentInformation = this.documents[document.id];
     if (oldDocumentInformation) {
@@ -149,7 +149,7 @@ TripleStore.prototype.addOrRemoveTriplesForDocument = function(document) {
     // TODO: End of legacy support above
     
     if (newTriples.length) {
-        this.documents[document.id] = {documentID: document.id, documentTimestamp: document.timestamp, triples: newTriples};
+        this.documents[document.id] = {documentID: document.id, documentTimestamp: document.timestamp, sha256AndLength: sha256AndLength, triples: newTriples};
     } else if (oldDocumentInformation) {
         delete this.documents[document.id];
     }

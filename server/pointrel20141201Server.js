@@ -117,7 +117,7 @@ function addToIndexes(body, sha256AndLength) {
     }
     
     // Need to call this even if there are no triples in this version because triples may need to be removed for earlier versions
-    indexes.tripleStore.addOrRemoveTriplesForDocument(body);
+    indexes.tripleStore.addOrRemoveTriplesForDocument(body, sha256AndLength);
     
     // TODO: Not sure if should keep triples in index entry???
     if (body.triples) indexEntry.triples = body.triples;
@@ -420,15 +420,27 @@ function respondForTag(request, response) {
     var tag = request.params.tag;
     console.log("==== GET by tag", request.url, tag);
     
-    var indexEntryList = referencesForTag(tag);
+    var documentIDList = referencesForTag(tag);
     
     // It's not an error if there are no items for a tag -- just return an empty list
-    if (!indexEntryList) {
-        indexEntryList = [];
+    if (!documentIDList) {
+        documentIDList = [];
+    }
+    
+    var documentEntriesList = [];
+    
+    for (var i = 0; i < documentIDList.length; i++) {
+        var documentID = documentIDList[i];
+        var documentEntryFromTripleStore = indexes.tripleStore.documents[documentID];
+        var timestamp = documentEntryFromTripleStore.documentTimestamp;
+        var sha256AndLength = documentEntryFromTripleStore.sha256AndLength;
+         
+        var documentEntry = {documentID: documentID, timestamp: timestamp, sha256AndLength: sha256AndLength};
+        documentEntriesList.push(documentEntry);
     }
     
     // Return the first -- should signal error if more than one?
-    return response.json({status: 'OK', message: "Index for Tag", tagRequested: tag, indexEntries: indexEntryList});
+    return response.json({status: 'OK', message: "Index for Tag", tagRequested: tag, documentEntries: documentEntriesList});
 }
 
 function respondForTriplesQueryPost(request, response) {    
