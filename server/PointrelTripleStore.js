@@ -10,6 +10,13 @@ define(function() {
         this.ac = {};
     }
     
+    function getTripleListFromMap(map, key) {
+        // TODO: In practice, current users could be adapted to react to a null and not need to allocated empty list
+        var list = map[key];
+        if (!list) return [];
+        return list;
+    }
+    
     function addTripleToMap(map, key, triple) {
         var list = map[key];
         if (!list) {
@@ -43,13 +50,13 @@ define(function() {
         
         var abKey = JSON.stringify([a, b]);
         addTripleToMap(this.ab, abKey, tripleToStore);
-        
-        var cbKey = JSON.stringify([c, b]);
-        addTripleToMap(this.cb, cbKey, tripleToStore);
-        
+ 
         var acKey = JSON.stringify([a, c]);
         addTripleToMap(this.ac, acKey, tripleToStore);
-        
+          
+        var cbKey = JSON.stringify([c, b]);
+        addTripleToMap(this.cb, cbKey, tripleToStore);
+
         return tripleToStore;
     };
     
@@ -88,7 +95,7 @@ define(function() {
     };
     
     // Public API
-    TripleStore.prototype.addDocument = function(document) {
+    TripleStore.prototype.addOrRemoveTriplesForDocument = function(document) {
         // remove previous document
         var oldDocumentInformation = this.documents[document.id];
         if (oldDocumentInformation) {
@@ -118,6 +125,68 @@ define(function() {
             delete this.documents[document.id];
         }
     };
+    
+    // Public API
+    TripleStore.prototype.findAllCForAB = function(a, b) {
+        var abKey = JSON.stringify([a, b]);
+        var triples = getTripleListFromMap(this.ab, abKey);
+        var result = [];
+        for (var i = 0; i < triples.length; i++) {
+            // TODO: Eliminate duplicates and/or sort using dictionary?
+            result.push(triples[i].c);
+        }
+        return result;
+    };
+
+    // Public API
+    TripleStore.prototype.findAllBForAC = function(a, c) {
+        var acKey = JSON.stringify([a, c]);
+        var triples = getTripleListFromMap(this.ac, acKey);
+        var result = [];
+        for (var i = 0; i < triples.length; i++) {
+            // TODO: Eliminate duplicates and/or sort using dictionary?
+            result.push(triples[i].b);
+        }
+        return result;
+    };
+
+    // Public API
+    TripleStore.prototype.findAllAForBC = function(b, c) {
+        var cbKey = JSON.stringify([c, b]);
+        var triples = getTripleListFromMap(this.cb, cbKey);
+        var result = [];
+        for (var i = 0; i < triples.length; i++) {
+            // TODO: Eliminate duplicates and/or sort using dictionary?
+            result.push(triples[i].a);
+        }
+        return result;
+    };
+    
+    // Public API
+    TripleStore.prototype.findLatestCForAB = function(a, b) {
+        var abKey = JSON.stringify([a, b]);
+        var triples = getTripleListFromMap(this.ab, abKey);
+        if (triples.length === 0) return null;
+        return triples[triples.length - 1].c;
+    };
+
+    // Public API
+    TripleStore.prototype.findLatestBForAC = function(a, c) {
+        var acKey = JSON.stringify([a, c]);
+        var triples = getTripleListFromMap(this.ac, acKey);
+        if (triples.length === 0) return null;
+        return triples[triples.length - 1].b;
+    };
+
+    // Public API
+    TripleStore.prototype.findLatestAForBC = function(b, c) {
+        var cbKey = JSON.stringify([c, b]);
+        var triples = getTripleListFromMap(this.cb, cbKey);
+        if (triples.length === 0) return null;
+        return triples[triples.length - 1].a;
+    };
+    
+    // TODO: API and indexing to return all B's for an A or C? Or A or Cs for a B?
     
     return TripleStore;
 });

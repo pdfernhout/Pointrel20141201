@@ -12,7 +12,7 @@
 
 // This version relies on using timestamps to get latest version of content
 // It will not index stored resources with timestamps in the future, and will reject them when added via API
-// This is to prevent a resource significantly in the future always being returned as the "latest" version for an ID or tag
+// This is to prevent a resource significantly in the future always being returned as the "latest" version for an ID or triple
 // Otherwise, that would be an error that can't be recovered from short of deleting the resource file manually and restarting the server
 
 // The constant maximumTimeDriftAllowed_ms is the maximum time drift allowed for resources to be in the future to allow for slightly different clocks
@@ -72,7 +72,7 @@ function referencesForID(id) {
 }
 
 function referencesForTag(tag) {
-    return indexes.tagToReferences[tag];
+    return indexes.tripleStore.findAllAForBC("document:tag", tag);
 }
 
 function referencesForContentType(contentType) {
@@ -92,7 +92,6 @@ function addToIndex(indexType, index, key, itemReference) {
 function addToIndexes(body, sha256AndLength) {
     //  console.log("addToIndexes", sha256AndLength, body);
     var id = body.id;
-    var tags = body.tags;
     var contentType = body.contentType;
     
     if (referenceIsIndexed(sha256AndLength)) {
@@ -111,7 +110,6 @@ function addToIndexes(body, sha256AndLength) {
     // Put in essential envelope data
     var indexEntry = {sha256AndLength: sha256AndLength};
     if (body.id) indexEntry.id = body.id;
-    if (body.tags) indexEntry.tags = body.tags;
     if (body.contentType) indexEntry.contentType = body.contentType;
     if (body.author) indexEntry.author = body.author;
     if (body.committer) indexEntry.committer = body.committer;
@@ -124,12 +122,13 @@ function addToIndexes(body, sha256AndLength) {
         //}
         addToIndex("id", indexes.idToReferences, "" + id, indexEntry);
     }
-    if (tags) {
-        for (var tagKey in tags) {
-            var tag = tags[tagKey];
-            addToIndex("tags", indexes.tagToReferences, "" + tag, indexEntry);
-        }
-    }
+    
+    // Need to call this even if there are no triples in this version because triples may need to be removed for earlier versions
+    indexes.tripleStore.addOrRemoveTriplesForDocument(body);
+    
+    // TODO: Not sure if should keep triples in index entry???
+    if (body.triples) indexEntry.triples = body.triples;
+    
     if (contentType) {
         addToIndex("contentType", indexes.contentTypeToReferences, "" + contentType, indexEntry);
     }
@@ -141,7 +140,7 @@ function reindexAllResources() {
     console.log("reindexAllResources");
     indexes.referenceToIsIndexed = {};
     indexes.idToReferences = {};
-    indexes.tagToReferences = {};
+    indexes.tripleStore = new TripleStore();
     indexes.contentTypeToReferences = {};
     
     reindexAllResourcesInDirectory(resourcesDirectory);
@@ -418,6 +417,16 @@ function respondForResourcePost(request, response) {
             var maximumAllowedTimestamp = calculateMaximumAllowedTimestamp();
             if (isTimestampInFuture(requestTimestamp, maximumAllowedTimestamp)) {
                 return sendFailureMessage(response, 406, "Not acceptable: Please check you computer's clock; request timestamp of: " + requestTimestamp + " is further in the future than the currently maximum allowed timestamp of: " + maximumAllowedTimestamp);
+            }
+            var triples = requestEnvelope.triples;
+            if (triples) {
+                for (var i = 0; i < triples.length; i++) {
+                    var triple = triples[i];
+                    var tripleTimestamp = triple.timestamp;
+                    if (tripleTimestamp && isTimestampInFuture(tripleTimestamp, maximumAllowedTimestamp)) {
+                        return sendFailureMessage(response, 406, "Not acceptable: Please check you computer's clock; triple timestamp of: " + tripleTimestamp + " for triple[" + i + "] is further in the future than the currently maximum allowed timestamp of: " + maximumAllowedTimestamp);
+                    }
+                }
             }
         }
     }
