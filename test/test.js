@@ -72,9 +72,16 @@ require(["/js/pointrel20141201Client.js"], function(pointrel20141201Client) {
     }
    
    function test6() {
-       pointrel20141201Client.findAllCForAB("hello world", "document:tag", function(error, queryResult) {
+       pointrel20141201Client.queryByTriple("hello world", "document:tag", null, "all", function(error, queryResult) {
            if (error) { console.log("error", error); return;}
            console.log("Got queryResult for triple query of findAllCForAB", queryResult);
+       });
+   }
+   
+   function test7() {
+       pointrel20141201Client.queryByTriple("hello world", "document:tag", function(error, queryResult) {
+           if (error) { console.log("error", error); return;}
+           console.log("Got queryResult for triple query of findLatestCForAB", queryResult);
        });
    }
     
@@ -86,4 +93,5 @@ require(["/js/pointrel20141201Client.js"], function(pointrel20141201Client) {
     setTimeout(test4, 400);
     setTimeout(test5, 500);
     setTimeout(test6, 600);
+    setTimeout(test7, 700);
 });
