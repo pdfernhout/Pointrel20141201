@@ -39,7 +39,7 @@ require(["/js/pointrel20141201Client.js"], function(pointrel20141201Client) {
             
             console.log("Stored item", result.sha256AndLength);
           
-            var sha256AndLengthExpected2 = "bef1343ea8e0e11cfcf83b0aec2c42659b5538782d66a89320e28eb11dfcc0f4_223";
+            var sha256AndLengthExpected2 = "da53e32ebdf57d99f10353382102b211116469150aa218d3436ec24516b20b2d_370";
           
             console.log("match expected 2?", sha256AndLengthExpected2 === result.sha256AndLength); 
           
