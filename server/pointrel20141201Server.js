@@ -23,9 +23,8 @@ var maximumTimeDriftAllowed_ms = 10000;
 // TODO: Should documents use 128-bit NTP timestamps based on NTP epoch?
 // TODO: Distinguish different types of timestamp: contributed when, authored when, about event when, primary source when???
 
-// TODO: Should this server store the pointrelServerVersion in documents it writes? To support reading old formats?
-
 var pointrelServerVersion = "pointrel20141201-0.0.3";
+var pointrelDocumentEnvelopeVersion = "pointrel20141201-0.0.3";
 var resourceFileSuffix = ".pce";
 var signatureType = "org.pointrel.pointrel20141201.PointrelContentEnvelope";
 
@@ -326,6 +325,16 @@ function respondForResourcePost(request, response) {
     
     if (requestEnvelope.__type !== signatureType) {
         return sendFailureMessage(response, 406, "Not acceptable: post requestEnvelope is missing __type signatureType of " + signatureType);
+    }
+    
+    if (requestEnvelope.__envelopeVersion !== true && requestEnvelope.__envelopeVersion !==  pointrelDocumentEnvelopeVersion) {
+        return sendFailureMessage(response, 406, "Not acceptable: post requestEnvelope __envelopeVersion is not supported; expected true or " + pointrelDocumentEnvelopeVersion);
+    }
+    
+    if (requestEnvelope.__envelopeVersion === true) {
+        requestEnvelope.__envelopeVersion = pointrelDocumentEnvelopeVersion;
+    } else if (requestEnvelope.__envelopeVersion !== pointrelDocumentEnvelopeVersion) {
+        return sendFailureMessage(response, 406, "Not acceptable: post requestEnvelope __envelopeVersion is not supported; expected true or " + pointrelDocumentEnvelopeVersion);
     }
     
     var requestTimestamp = requestEnvelope.timestamp;

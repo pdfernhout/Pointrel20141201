@@ -137,6 +137,8 @@ define([
         
         var envelope = {
             __type: "org.pointrel.pointrel20141201.PointrelContentEnvelope",
+            // Envelope version will be filled in by the server, but could in theory be specified if the server understands it
+            __envelopeVersion: true,
             // TODO: Maybe store a UUID?
         };
         
