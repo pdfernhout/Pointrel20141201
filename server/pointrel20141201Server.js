@@ -21,6 +21,7 @@ var maximumTimeDriftAllowed_ms = 10000;
 
 // TODO: Use internet time service somehow to check if server time looks close enough to OK when startup
 // TODO: Should documents use 128-bit NTP timestamps based on NTP epoch?
+// TODO: Distinguish different types of timestamp: contributed when, authored when, about event when, primary source when???
 
 // TODO: Should this server store the pointrelServerVersion in documents it writes? To support reading old formats?
 
@@ -313,6 +314,7 @@ function respondWithStatus(request, response) {
 
 function respondForResourceGet(request, response) {
     // Sanitizes resource ID to prevent reading arbitrary files
+    // TODO: Improve with length limits on sections and checking if SHA256 looks good
     var sha256AndLength = sanitizeFileName(request.params.sha256AndLength);
     
     console.log("==== GET by sha256AndLength", request.url);
