@@ -58,11 +58,15 @@ define([
      * Triples can also have their own timestamp though, using an optional "timestamp" field.
      * As with document timestamps, documents may be rejected by the server if these timestamps are significantly in the future.
      * 
-     * To search for data, you can get envelope references back using either the id (with pointrel_queryByID)
-     * or the tags (using pointrel_queryByTag) or by the triple search API.
-     * These are the methods for the triple search API, where the arguments are implied by the last two letters in the name:
-     * To find a list of all items that match: findAllCForAB, findAllBForAC, findAllAForBC
-     * To find one specific item or null: findLatestCForAB, findLatestBForAC, findLatestAForBC
+     * To search for data, you can get envelope references back using either the id (with queryByID)
+     * or the tags (using queryByTag) or by the triple search API with queryByTriple.
+     * To use the queryByTriple API, fill in two of the first three a, b, c arguments with strings and the other with null.
+     * To get all the matches, use "all" as the fourth field. Otherwise use "latest".
+     * You can omit the fourth parameter if it is "latest", and also then omit the third paramater if it is null.
+     * However, you still need the callback paramater at the end in those cases with omitted paramaters.
+     * For example: queryByTriple("a", "b", callback) gets the latest "c" match.
+     * As another example: queryByTriple(null, "b", "c", "all", callback) gets all the items which have a "b" value of "c".
+     * These two queries are the most commonly used, along with getting all values for a "c" where that represents a set.
      * 
      * The convenience methods "loadLatestEnvelopeForID" and "loadLatestEnvelopeForTag" query for
      * the latest envelope for the ID or tag and then retrieve it.
@@ -294,10 +298,44 @@ define([
         });
     }
     
-    function pointrel_queryByTriple(queryType, a, b, c, callback) {
+    // c and queryType are optional args
+    function pointrel_queryByTriple(a, b, c, queryType, callback) {
+        if (arguments.length === 3 && typeof(c) == "function") {
+            callback = c;
+            c = null;
+            queryType = "latest";
+        }
+        
+        if (arguments.length === 4 && typeof(queryType) == "function") {
+            callback = queryType;
+            queryType = "latest";
+        }
+        
         console.log("pointrel_queryByTriple", queryType, a, b, c);
         
-        var query = {queryType: queryType, a: a, b: b, c: c};
+        var serverQueryType = null;
+        
+        if (a && b && c === null && queryType === "all") {
+            serverQueryType = "findAllCForAB"; 
+        } else if (a && b === null && c && queryType === "all") {
+            serverQueryType = "findAllBForAC"; 
+        } else if (a === null && b && c && queryType === "all") {
+            serverQueryType = "findAllAForBC"; 
+        } else if (a && b && c === null && queryType === "latest") {
+            serverQueryType = "findLatestCForAB"; 
+        } else if (a && b === null && c && queryType === "latest") {
+            serverQueryType = "findLatestBForAC"; 
+        } else if (a === null && b && c && queryType === "latest") {
+            serverQueryType = "findLatestAForBC"; 
+        }
+        
+        if (serverQueryType === null) {
+            throw "Unsupported query type";
+            // callback("Unsupported query type", null);
+        }
+        
+        
+        var query = {queryType: serverQueryType, a: a, b: b, c: c};
         var queryString = JSON.stringify(query, null, 2);
         
         xhr.post(tripleQueryIndexPath, {
@@ -313,32 +351,6 @@ define([
         }, function(event) {
             // Handle a progress event from the request if the browser supports XHR2
         });
-    }
-    
-    /* Querying for triples */
-    
-    function findAllCForAB(a, b, callback) {
-        pointrel_queryByTriple("findAllCForAB", a, b, null, callback);
-    }
-    
-    function findAllBForAC(a, c, callback) {
-        pointrel_queryByTriple("findAllBForAC", a, null, c, callback);
-    }
-    
-    function findAllAForBC(b, c, callback) {
-        pointrel_queryByTriple("findAllAForBC", null, b, c, callback);
-    }
-    
-    function findLatestCForAB(a, b, callback) {
-        pointrel_queryByTriple("findLatestCForAB", a, b, null, callback);
-    }
-    
-    function findLatestBForAC(a, c, callback) {
-        pointrel_queryByTriple("findLatestBForAC", a, null, c, callback);
-    }
-    
-    function findLatestAForBC(b, c, callback) {
-        pointrel_queryByTriple("findLatestAForBC", null, b, c, callback);
     }
     
     /* Convenience */
@@ -490,12 +502,7 @@ define([
         fetchIDs: pointrel_fetchIDs,
         queryByID: pointrel_queryByID,
         queryByTag: pointrel_queryByTag,
-        findAllCForAB: findAllCForAB,
-        findAllBForAC: findAllBForAC,
-        findAllAForBC: findAllAForBC,
-        findLatestCForAB: findLatestCForAB,
-        findLatestBForAC: findLatestBForAC,
-        findLatestAForBC: findLatestAForBC,
+        queryByTriple: pointrel_queryByTriple,
         loadEnvelopesForID: loadEnvelopesForID,
         loadLatestEnvelopeForID: loadLatestEnvelopeForID,
         loadEnvelopesForTag: loadEnvelopesForTag,
