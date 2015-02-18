@@ -109,16 +109,30 @@ define(function() {
                 this.removeTriple(oldTriple);
             }
         }
+        
         var documentTriples = document.triples;
         var newTriples = [];
+        
         if (documentTriples) {
             for (var newTripleIndex = 0; newTripleIndex < documentTriples.length; newTripleIndex++) {
                 var documentTriple = documentTriples[newTripleIndex];
                 var tripleToStore = this.addTriple(documentTriple, document.id, document.timestamp);
                 newTriples.push(tripleToStore);
             }
-            
         }
+        
+        // TODO: Legacy support for previous approach to tags and previously saved documents -- remove this eventually
+        if (document.tags) {
+            for (var i = 0; i < document.tags.length; i++) {
+                var tag = document.tags[i];
+                if (!tag) continue;
+                var tagTriple = ({a: document.id, b: "document:tag", c: tag});
+                var tagTripleToStore = this.addTriple(tagTriple, document.id, document.timestamp);
+                newTriples.push(tagTripleToStore);
+            }
+        }
+        // TODO: End of legacy support above
+        
         if (newTriples.length) {
             this.documents[document.id] = {documentID: document.id, documentTimestamp: document.timestamp, triples: newTriples};
         } else if (oldDocumentInformation) {
