@@ -70,12 +70,20 @@ require(["/js/pointrel20141201Client.js"], function(pointrel20141201Client) {
             console.log("Got queryResult for tag 'test-nonexistent-tag'", queryResult);
         });
     }
+   
+   function test6() {
+       pointrel20141201Client.findAllCForAB("hello world", "document:tag", function(error, queryResult) {
+           if (error) { console.log("error", error); return;}
+           console.log("Got queryResult for triple query of findAllCForAB", queryResult);
+       });
+   }
     
     // Need to delay calls to ensure server has stored and indexed data before making next call
     // TODO: Could use test runner software
-    test1();
-    setTimeout(test2, 100);
-    setTimeout(test3, 200);
-    setTimeout(test4, 300);
-    setTimeout(test5, 400);
+    setTimeout(test1, 100);
+    setTimeout(test2, 200);
+    setTimeout(test3, 300);
+    setTimeout(test4, 400);
+    setTimeout(test5, 500);
+    setTimeout(test6, 600);
 });
