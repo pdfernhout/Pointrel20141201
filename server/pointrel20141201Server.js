@@ -20,8 +20,11 @@
 var maximumTimeDriftAllowed_ms = 10000;
 
 // TODO: Use internet time service somehow to check if server time looks close enough to OK when startup
+// TODO: Should documents use 128-bit NTP timestamps based on NTP epoch?
 
-var version = "pointrel20141201-0.0.2";
+// TODO: Should this server store the pointrelServerVersion in documents it writes? To support reading old formats?
+
+var pointrelServerVersion = "pointrel20141201-0.0.3";
 var resourceFileSuffix = ".pce";
 var signatureType = "org.pointrel.pointrel20141201.PointrelContentEnvelope";
 
@@ -318,7 +321,7 @@ function calculateMaximumAllowedTimestamp() {
 /* Responding to requests */
 
 function respondWithStatus(request, response) {
-    response.json({status: 'OK', version: version, currentTimestamp: getCurrentTimestamp()});
+    response.json({status: 'OK', version: pointrelServerVersion, currentTimestamp: getCurrentTimestamp()});
 }
 
 function respondForResourceGet(request, response) {
@@ -583,7 +586,7 @@ function initialize(app, config) {
     app.post(apiBaseURL + '/indexes/triples', respondForTriplesQueryPost);
 }
 
-exports.version = version;
+exports.version = pointrelServerVersion;
 exports.initialize = initialize;
 exports.reindexAllResources = reindexAllResources;
 exports.referenceIsIndexed = referenceIsIndexed;
