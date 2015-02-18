@@ -147,8 +147,13 @@ define([
         
         // TODO: More validation to ensure strings for tags and that it is an array
         if (metadata.tags && metadata.tags.length > 0 && envelope.id) {
-            // Copy the array because we will be changing it
-            var triples = envelope.triples.slice();
+            var triples;
+            if (envelope.triples) {
+                // Copy the array if it exists because we will be changing it
+                triples = envelope.triples.slice(0);
+            } else {
+                triples = [];
+            }
             for (var i = 0; i < metadata.tags.length; i++) {
                 var tag = metadata.tags[i];
                 if (!tag) continue;
