@@ -500,6 +500,38 @@ function respondForTag(request, response) {
     return response.json({status: 'OK', message: "Index for Tag", tagRequested: tag, indexEntries: indexEntryList});
 }
 
+function respondForTriplesQueryPost(request, response) {
+    console.log("POST respondForQueryPost", request.url, request.body);
+    
+    var query = request.body;
+
+    var queryType = query.queryType;
+    var a = query.a;
+    var b = query.b;
+    var c = query.c;
+    
+    var result = null;
+    
+    if (queryType === "findAllCForAB") {
+        result = indexes.tripleStore.findAllCForAB(a, b);
+    } else if (queryType === "findAllBForAC") {
+        result = indexes.tripleStore.findAllBForAC(a, c);
+    } else if (queryType === "findAllAForBC") {
+        result = indexes.tripleStore.findAllAForBC(b, c);
+    } else if (queryType === "findLatestCForAB") {
+        result = indexes.tripleStore.findLatestCForAB(a, b);
+    } else if (queryType === "findLatestBForAC") {
+        result = indexes.tripleStore.findLatestBForAC(a, c);
+    } else if (queryType === "findLatestAForBC") {
+        result = indexes.tripleStore.findLatestAForBC(b, c);
+    } else {
+        return sendFailureMessage(response, 406, "Not acceptable: query type not supported: " + queryType);
+        // return response.json({status: 'FAILED', message: "Unsupported query type", query: query});  
+    }
+    
+    return response.json({status: 'OK', query: query, result: result});        
+}
+
 /* Other */
 
 // Intended for module users
@@ -548,6 +580,7 @@ function initialize(app, config) {
     app.get(apiBaseURL + '/indexes/id/', respondForIDList);
     app.get(apiBaseURL + '/indexes/id/:id(*)', respondForID);
     app.get(apiBaseURL + '/indexes/tag/:tag(*)', respondForTag);
+    app.post(apiBaseURL + '/indexes/triples', respondForTriplesQueryPost);
 }
 
 exports.version = version;
