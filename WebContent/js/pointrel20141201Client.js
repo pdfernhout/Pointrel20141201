@@ -111,7 +111,7 @@ define([
     var idIndexPath = apiPath + "indexes/id/";
     var tagIndexPath = apiPath + "indexes/tag/";
     var tripleQueryIndexPath = apiPath + "indexes/triples";
-    var standardDocumentTagRelationship = "{http://pointrel.org/schemas/pointrel20141201}document_tag";
+    var standardDocumentTagRelationship = "{http://pointrel.org/pointrel20141201}document_tag";
     
     function pointrel_getServerStatus(callback) {
         console.log("pointrel_getServerStatus");

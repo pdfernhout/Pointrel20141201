@@ -8,7 +8,7 @@ function TripleStore() {
     this.ac = {};
 }
 
-TripleStore.prototype.standardDocumentTagRelationship = "{http://pointrel.org/schemas/pointrel20141201}document_tag";
+TripleStore.prototype.standardDocumentTagRelationship = "{http://pointrel.org/pointrel20141201}document_tag";
 
 function getTripleListFromMap(map, key) {
     // TODO: In practice, current users could be adapted to react to a null and not need to allocated empty list
