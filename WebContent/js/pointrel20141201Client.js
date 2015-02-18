@@ -31,11 +31,11 @@ define([
      * These three fields can be thought of initially as object, aspect, and value (similar to RDF).
      * Or, they can be seen as an A pointer and a C pointer joined by a B relationship.
      * The B relationship is a string that is generally of the form of a URL-like location (without a leading http://), then a ":", and then a term.
-     * An example of a relationship used for tagging documents is: "pointrel.org/pointrel20141201:document_tag"
-     * Triples can define "tags" by associating the document ID in the "a" field with "pointrel.org/pointrel20141201:document_tag" in the "b" field
+     * An example of a relationship used for tagging documents is: "{http://pointrel.org/schemas/pointrel20141201}document_tag"
+     * Triples can define "tags" by associating the document ID in the "a" field with "{http://pointrel.org/schemas/pointrel20141201}document_tag" in the "b" field
      * and the tag string in the "c" field.
      * For example, a tag called "my tag" could be added for a document called "test" by using the metadata:
-     *    { id: "test", triples: [{a: "test", b: "pointrel.org/pointrel20141201:document_tag", c: "my tag"}] }
+     *    { id: "test", triples: [{a: "test", b: "{http://pointrel.org/schemas/pointrel20141201}document_tag", c: "my tag"}] }
      * Tags are roughly equivalent to containers that a document is stored in.
      * As a convenience, you can list tag strings in metadata for "tags" and they will be added as new triples in addition to any triples you supply.
      * Example metadata that is equivalent to the above:  { id: "test", tags: ["my tag"] }
@@ -111,7 +111,7 @@ define([
     var idIndexPath = apiPath + "indexes/id/";
     var tagIndexPath = apiPath + "indexes/tag/";
     var tripleQueryIndexPath = apiPath + "indexes/triples";
-    var standardDocumentTagRelationship = "pointrel.org/pointrel20141201:document_tag";
+    var standardDocumentTagRelationship = "{http://pointrel.org/schemas/pointrel20141201}document_tag";
     
     function pointrel_getServerStatus(callback) {
         console.log("pointrel_getServerStatus");
