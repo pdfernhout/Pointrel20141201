@@ -59,7 +59,10 @@ define([
      * As with document timestamps, documents may be rejected by the server if these timestamps are significantly in the future.
      * 
      * To search for data, you can get envelope references back using either the id (with pointrel_queryByID)
-     * or the tags (using pointrel_queryByTag) or by the triple search API. (TODO: More on triples API).
+     * or the tags (using pointrel_queryByTag) or by the triple search API.
+     * These are the methods for the triple search API, where the arguments are implied by the last two letters in the name:
+     * To find a list of all items that match: findAllCForAB, findAllBForAC, findAllAForBC
+     * To find one specific item or null: findLatestCForAB, findLatestBForAC, findLatestAForBC
      * 
      * The convenience methods "loadLatestEnvelopeForID" and "loadLatestEnvelopeForTag" query for
      * the latest envelope for the ID or tag and then retrieve it.
@@ -100,6 +103,7 @@ define([
     var resourcesPath = apiPath + "resources/";
     var idIndexPath = apiPath + "indexes/id/";
     var tagIndexPath = apiPath + "indexes/tag/";
+    var tripleQueryIndexPath = apiPath + "indexes/triples";
     
     function pointrel_getServerStatus(callback) {
         console.log("pointrel_getServerStatus");
@@ -290,6 +294,53 @@ define([
         });
     }
     
+    function pointrel_queryByTriple(queryType, a, b, c, callback) {
+        console.log("pointrel_queryByTriple", queryType, a, b, c);
+        
+        var query = {queryType: queryType, a: a, b: b, c: c};
+        var queryString = JSON.stringify(query, null, 2);
+        
+        xhr.post(tripleQueryIndexPath, {
+            handleAs: "text",
+            data: queryString,
+            headers: {'Content-Type': 'application/json; charset=UTF-8'}
+        }).then(function(data) {
+            // OK
+            callback(null, JSON.parse(data));
+        }, function(error) {
+            // Error
+            callback(error, null);
+        }, function(event) {
+            // Handle a progress event from the request if the browser supports XHR2
+        });
+    }
+    
+    /* Querying for triples */
+    
+    function findAllCForAB(a, b) {
+        pointrel_queryByTriple("findAllCForAB", a, b);
+    }
+    
+    function findAllBForAC(a, c) {
+        pointrel_queryByTriple("findAllBForAC", a, c);
+    }
+    
+    function findAllAForBC(b, c) {
+        pointrel_queryByTriple("findAllAForBC", b, c);
+    }
+    
+    function findLatestCForAB(a, b) {
+        pointrel_queryByTriple("findLatestCForAB", a, b);
+    }
+    
+    function findLatestBForAC(a, c) {
+        pointrel_queryByTriple("findLatestBForAC", a, c);
+    }
+    
+    function findLatestAForBC(b, c) {
+        pointrel_queryByTriple("findLatestAForBC", b, c);
+    }
+    
     /* Convenience */
     
     // Internal: fetch one item and add it to the map
@@ -439,6 +490,12 @@ define([
         fetchIDs: pointrel_fetchIDs,
         queryByID: pointrel_queryByID,
         queryByTag: pointrel_queryByTag,
+        findAllCForAB: findAllCForAB,
+        findAllBForAC: findAllBForAC,
+        findAllAForBC: findAllAForBC,
+        findLatestCForAB: findLatestCForAB,
+        findLatestBForAC: findLatestBForAC,
+        findLatestAForBC: findLatestAForBC,
         loadEnvelopesForID: loadEnvelopesForID,
         loadLatestEnvelopeForID: loadLatestEnvelopeForID,
         loadEnvelopesForTag: loadEnvelopesForTag,
