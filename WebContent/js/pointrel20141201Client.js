@@ -490,19 +490,19 @@ define([
             if (error) { console.log("loadEnvelopesForTag error", error); return callback(error);}
             console.log("Got queryResult for tag", tag, queryResult);
             
-            var indexEntries = queryResult.indexEntries;
+            var documentEntries = queryResult.documentEntries;
             
             var promises = [];
-            for (var index in indexEntries) {
-                var indexEntry = indexEntries[index];
-                if (!referenceToEnvelopeMap[indexEntry.sha256AndLength]) {
-                    if (!indexEntry.sha256AndLength) {
-                        var errorMessage = "ERROR: indexEntry.sha256AndLength value missing in result from loadEnvelopesForTag";
+            for (var index in documentEntries) {
+                var documentEntry = documentEntries[index];
+                if (!referenceToEnvelopeMap[documentEntry.sha256AndLength]) {
+                    if (!documentEntry.sha256AndLength) {
+                        var errorMessage = "ERROR: documentEntry.sha256AndLength value missing in result from loadEnvelopesForTag";
                         console.log(errorMessage);
                         console.log("queryResult", queryResult);
                         throw new Error(errorMessage);
                     }
-                    promises.push(fetchItem(referenceToEnvelopeMap, indexEntry.sha256AndLength));
+                    promises.push(fetchItem(referenceToEnvelopeMap, documentEntry.sha256AndLength));
                 }
             }
             
@@ -524,13 +524,13 @@ define([
             if (error) { console.log("loadLatestEnvelopeForTag error", error); return callback(error);}
             console.log("Got queryResult for tag", tag, queryResult);
             
-            var indexEntries = queryResult.indexEntries;
+            var documentEntries = queryResult.documentEntries;
             
             var latestEntry = null;
-            for (var index in indexEntries) {
-                var indexEntry = indexEntries[index];
-                if (!latestEntry || latestEntry.timestamp <= indexEntry.timestamp) {
-                    latestEntry = indexEntry;
+            for (var index in documentEntries) {
+                var documentEntry = documentEntries[index];
+                if (!latestEntry || latestEntry.timestamp <= documentEntry.timestamp) {
+                    latestEntry = documentEntry;
                 }
             }
             
