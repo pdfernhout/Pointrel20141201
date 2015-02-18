@@ -317,28 +317,28 @@ define([
     
     /* Querying for triples */
     
-    function findAllCForAB(a, b) {
-        pointrel_queryByTriple("findAllCForAB", a, b);
+    function findAllCForAB(a, b, callback) {
+        pointrel_queryByTriple("findAllCForAB", a, b, null, callback);
     }
     
-    function findAllBForAC(a, c) {
-        pointrel_queryByTriple("findAllBForAC", a, c);
+    function findAllBForAC(a, c, callback) {
+        pointrel_queryByTriple("findAllBForAC", a, null, c, callback);
     }
     
-    function findAllAForBC(b, c) {
-        pointrel_queryByTriple("findAllAForBC", b, c);
+    function findAllAForBC(b, c, callback) {
+        pointrel_queryByTriple("findAllAForBC", null, b, c, callback);
     }
     
-    function findLatestCForAB(a, b) {
-        pointrel_queryByTriple("findLatestCForAB", a, b);
+    function findLatestCForAB(a, b, callback) {
+        pointrel_queryByTriple("findLatestCForAB", a, b, null, callback);
     }
     
-    function findLatestBForAC(a, c) {
-        pointrel_queryByTriple("findLatestBForAC", a, c);
+    function findLatestBForAC(a, c, callback) {
+        pointrel_queryByTriple("findLatestBForAC", a, null, c, callback);
     }
     
-    function findLatestAForBC(b, c) {
-        pointrel_queryByTriple("findLatestAForBC", b, c);
+    function findLatestAForBC(b, c, callback) {
+        pointrel_queryByTriple("findLatestAForBC", null, b, c, callback);
     }
     
     /* Convenience */
