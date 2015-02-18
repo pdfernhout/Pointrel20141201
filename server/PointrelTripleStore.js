@@ -1,3 +1,6 @@
+/*jslint node: true */
+"use strict";
+
 function TripleStore() {
     this.documents = {};
     //this.a = {}
