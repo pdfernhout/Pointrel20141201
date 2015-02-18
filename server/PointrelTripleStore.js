@@ -134,7 +134,7 @@ TripleStore.prototype.addOrRemoveTriplesForDocument = function(document) {
     }
     
     // TODO: Legacy support for previous approach to tags and previously saved documents -- remove this eventually
-    if (document.tags) {
+    if (!document.__envelopeVersion && document.tags) {
         for (var i = 0; i < document.tags.length; i++) {
             var tag = document.tags[i];
             if (!tag) continue;
