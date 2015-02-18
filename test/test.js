@@ -72,14 +72,14 @@ require(["/js/pointrel20141201Client.js"], function(pointrel20141201Client) {
     }
    
    function test6() {
-       pointrel20141201Client.queryByTriple("hello world", "document:tag", null, "all", function(error, queryResult) {
+       pointrel20141201Client.queryByTriple("hello world", "{http://pointrel.org/pointrel20141201}document_tag", null, "all", function(error, queryResult) {
            if (error) { console.log("error", error); return;}
            console.log("Got queryResult for triple query of findAllCForAB", queryResult);
        });
    }
    
    function test7() {
-       pointrel20141201Client.queryByTriple("hello world", "document:tag", function(error, queryResult) {
+       pointrel20141201Client.queryByTriple("hello world", "{http://pointrel.org/pointrel20141201}document_tag", function(error, queryResult) {
            if (error) { console.log("error", error); return;}
            console.log("Got queryResult for triple query of findLatestCForAB", queryResult);
        });
