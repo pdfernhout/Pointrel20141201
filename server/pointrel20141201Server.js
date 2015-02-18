@@ -60,10 +60,7 @@ var indexes = {
      // Maps document id to array of sha256AndLength strings, one for each "version"
      idToReferences: {},
 
-     tripleStore: new TripleStore(),
-
-     // Maps contentType to array of sha256AndLength strings
-     contentTypeToReferences: {}       
+     tripleStore: new TripleStore(), 
 };
 
 function referenceIsIndexed(reference) {
@@ -76,10 +73,6 @@ function referencesForID(id) {
 
 function referencesForTag(tag) {
     return indexes.tripleStore.findAllAForBC("document:tag", tag);
-}
-
-function referencesForContentType(contentType) {
-    return indexes.contentTypeToReferences[contentType];
 }
 
 function addToIndex(indexType, index, key, itemReference) {
@@ -131,11 +124,7 @@ function addToIndexes(body, sha256AndLength) {
     
     // TODO: Not sure if should keep triples in index entry???
     if (body.triples) indexEntry.triples = body.triples;
-    
-    if (contentType) {
-        addToIndex("contentType", indexes.contentTypeToReferences, "" + contentType, indexEntry);
-    }
-    
+
     return true;
 }
 
@@ -144,7 +133,6 @@ function reindexAllResources() {
     indexes.referenceToIsIndexed = {};
     indexes.idToReferences = {};
     indexes.tripleStore = new TripleStore();
-    indexes.contentTypeToReferences = {};
     
     reindexAllResourcesInDirectory(resourcesDirectory);
     
@@ -154,7 +142,6 @@ function reindexAllResources() {
     
     // console.log("id index", indexes.idToReferences);
     // console.log("tag index", indexes.tagToReferences);
-    // console.log("contentType index", indexes.contentTypeToReferences);
 }
 
 function reindexAllResourcesInDirectory(directory) {
@@ -592,7 +579,6 @@ exports.reindexAllResources = reindexAllResources;
 exports.referenceIsIndexed = referenceIsIndexed;
 exports.referencesForID = referencesForID;
 exports.referencesForTag = referencesForTag;
-exports.referencesForContentType = referencesForContentType;
 exports.fetchContentForReference = fetchContentForReference;
 exports.fetchContentForReferenceSync = fetchContentForReferenceSync;
 exports.storeAndIndexItem = storeAndIndexItem;
