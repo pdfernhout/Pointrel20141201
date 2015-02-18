@@ -8,6 +8,8 @@ function TripleStore() {
     this.ac = {};
 }
 
+TripleStore.prototype.standardDocumentTagRelationship = "pointrel.org/pointrel20141201:document_tag";
+
 function getTripleListFromMap(map, key) {
     // TODO: In practice, current users could be adapted to react to a null and not need to allocated empty list
     var list = map[key];
@@ -136,7 +138,7 @@ TripleStore.prototype.addOrRemoveTriplesForDocument = function(document) {
         for (var i = 0; i < document.tags.length; i++) {
             var tag = document.tags[i];
             if (!tag) continue;
-            var tagTriple = ({a: document.id, b: "document:tag", c: tag});
+            var tagTriple = ({a: document.id, b: TripleStore.standardDocumentTagRelationship, c: tag});
             var tagTripleToStore = this.addTriple(tagTriple, document.id, document.timestamp);
             newTriples.push(tagTripleToStore);
         }

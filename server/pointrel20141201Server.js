@@ -73,7 +73,7 @@ function referencesForID(id) {
 }
 
 function referencesForTag(tag) {
-    return indexes.tripleStore.findAllAForBC("document:tag", tag);
+    return indexes.tripleStore.findAllAForBC(TripleStore.standardDocumentTagRelationship, tag);
 }
 
 function addToIndex(indexType, index, key, itemReference) {

@@ -29,10 +29,13 @@ define([
      * 
      * One special type of metadata are "triples" which each consist of three fields (a, b, c) stored in an array.
      * These three fields can be thought of initially as object, aspect, and value (similar to RDF).
-     * Triples can define "tags" by associating the document ID in the "a" field with "document:tag" in the "b" field
+     * Or, they can be seen as an A pointer and a C pointer joined by a B relationship.
+     * The B relationship is a string that is generally of the form of a URL-like location (without a leading http://), then a ":", and then a term.
+     * An example of a relationship used for tagging documents is: "pointrel.org/pointrel20141201:document_tag"
+     * Triples can define "tags" by associating the document ID in the "a" field with "pointrel.org/pointrel20141201:document_tag" in the "b" field
      * and the tag string in the "c" field.
      * For example, a tag called "my tag" could be added for a document called "test" by using the metadata:
-     *    { id: "test", triples: [{a: "test", b: "document:tag", c: "my tag"}] }
+     *    { id: "test", triples: [{a: "test", b: "pointrel.org/pointrel20141201:document_tag", c: "my tag"}] }
      * Tags are roughly equivalent to containers that a document is stored in.
      * As a convenience, you can list tag strings in metadata for "tags" and they will be added as new triples in addition to any triples you supply.
      * Example metadata that is equivalent to the above:  { id: "test", tags: ["my tag"] }
@@ -86,7 +89,7 @@ define([
      * An example of calling storeInNewEnvelope is:
      * 
      * function storeProjectAnswersVersion(projectAnswers, previousReferenceOrNull, callbackWhenDone) {
-     *   var metadata = {id: "Some-ID", previous: previousReferenceOrNull, tags: [], contentType: "Some-Content-Type", contentVersion: "1.0", author: null, committer: "SomeUserID", timestamp: true};        
+     *   var metadata = {id: "Some-ID", previous: previousReferenceOrNull, triples: [], contentType: "Some-Content-Type", contentVersion: "1.0", author: null, committer: "SomeUserID", timestamp: true};        
      *   pointrel20141201Client.storeInNewEnvelope(projectAnswers, metadata, function(error, serverResponse) {
      *       if (error) {
      *           console.log("could not write new version:\n" + error);
@@ -108,6 +111,7 @@ define([
     var idIndexPath = apiPath + "indexes/id/";
     var tagIndexPath = apiPath + "indexes/tag/";
     var tripleQueryIndexPath = apiPath + "indexes/triples";
+    var standardDocumentTagRelationship = "pointrel.org/pointrel20141201:document_tag";
     
     function pointrel_getServerStatus(callback) {
         console.log("pointrel_getServerStatus");
@@ -126,7 +130,7 @@ define([
         });
     }
     
-    // var metadata = {id: null, previous: null, revision: null, tags: [], contentType: null, contentVersion: null, author: null, committer: null, timestamp: true};
+    // var metadata = {id: null, previous: null, revision: null, triples: [], contentType: null, contentVersion: null, author: null, committer: null, timestamp: true};
     // "true" for timestamp means use the current time as calculated on the server
     function pointrel_storeInNewEnvelope(item, metadata, callback) {
         console.log("pointrel_storeInNewEnvelope", metadata, item);
@@ -165,7 +169,7 @@ define([
             for (var i = 0; i < metadata.tags.length; i++) {
                 var tag = metadata.tags[i];
                 if (!tag) continue;
-                triples.push({a: envelope.id, b: "document:tag", c: tag});
+                triples.push({a: envelope.id, b: standardDocumentTagRelationship, c: tag});
             }
             envelope.triples = triples;
         }
