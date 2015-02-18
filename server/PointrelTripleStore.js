@@ -4,7 +4,7 @@ function TripleStore() {
     //this.b = {};
     //this.c = {};
     this.ab = {};
-    this.cb = {};
+    this.bc = {};
     this.ac = {};
 }
 
@@ -51,53 +51,56 @@ TripleStore.prototype.addTriple = function(documentTriple, documentID, documentT
     var c = documentTriple.c;
     
     // TODO: what about UUID for documentTriple?
-        var tripleToStore = {a: a, b: b, c: c, timestamp: timestamp, documentID: documentID};
-        
-        var abKey = JSON.stringify([a, b]);
-        addTripleToMap(this.ab, abKey, tripleToStore);
- 
-        var acKey = JSON.stringify([a, c]);
-        addTripleToMap(this.ac, acKey, tripleToStore);
-          
-        var cbKey = JSON.stringify([c, b]);
-        addTripleToMap(this.cb, cbKey, tripleToStore);
+    var tripleToStore = {a: a, b: b, c: c, timestamp: timestamp, documentID: documentID};
 
-        return tripleToStore;
-    };
+    var abKey = JSON.stringify([a, b, null]);
+    addTripleToMap(this.ab, abKey, tripleToStore);
     
-    function removeTripleFromMap(map, key, storedTripleToRemove) {
-        var list = map[key];
-        if (!list) {
-            console.log("ERROR: Unexpectedly missing map entries for triple", map, key, storedTripleToRemove);
+    var acKey = JSON.stringify([a, null, c]);
+    addTripleToMap(this.ac, acKey, tripleToStore);
+    
+    var bcKey = JSON.stringify([null, b, c]);
+    addTripleToMap(this.bc, bcKey, tripleToStore);
+    
+    return tripleToStore;
+};
+    
+function removeTripleFromMap(map, key, storedTripleToRemove) {
+    // console.log("----------- removeTripleFromMap", key, "\n", storedTripleToRemove, "\n", map);
+    var list = map[key];
+    if (!list) {
+        console.log("ERROR: Unexpectedly missing map entries for triple", key, "\n", storedTripleToRemove, "\n", map);
         return;
     }
     
     // This loop assumes it will return immediately after any change to the array, otherwise length might change during run
     for (var i = 0; i < list.length; i++) {
         if (list[i] === storedTripleToRemove) {
-            // remove that element
-            map[key] = list.splice(i, 1);
+            // remove that element; splice updates the original array
+            list.splice(i, 1);
+            // console.log("List after change: ", list);
             if (list.length === 0) delete map[key];
             return;
         }
     }
     
-    console.log("ERROR: Could not find triple to delete in map list", map, key, storedTripleToRemove);
+    console.log("ERROR: Could not find triple to delete in map list", key, "\ntriple:", storedTripleToRemove, "\nlist:", list, "\nmap:", map);
 }
 
 TripleStore.prototype.removeTriple = function(storedTriple) {
+    // console.log("============== removeTriple", storedTriple);
     // TODO: Could check based on a Triple UUID?
     var a = storedTriple.a;
     var b = storedTriple.b;
     var c = storedTriple.c;
     
-    var abKey = JSON.stringify([a, b]);
+    var abKey = JSON.stringify([a, b, null]);
     removeTripleFromMap(this.ab, abKey, storedTriple);
     
-    var cbKey = JSON.stringify([c, b]);
-    removeTripleFromMap(this.cb, cbKey, storedTriple);
+    var bcKey = JSON.stringify([null, b, c]);
+    removeTripleFromMap(this.bc, bcKey, storedTriple);
     
-    var acKey = JSON.stringify([a, c]);
+    var acKey = JSON.stringify([a, null, c]);
     removeTripleFromMap(this.ac, acKey, storedTriple);
 };
 
@@ -149,7 +152,7 @@ TripleStore.prototype.addOrRemoveTriplesForDocument = function(document) {
 
 // Public API
 TripleStore.prototype.findAllCForAB = function(a, b) {
-    var abKey = JSON.stringify([a, b]);
+    var abKey = JSON.stringify([a, b, null]);
     var triples = getTripleListFromMap(this.ab, abKey);
     var result = [];
     for (var i = 0; i < triples.length; i++) {
@@ -161,7 +164,7 @@ TripleStore.prototype.findAllCForAB = function(a, b) {
 
 // Public API
 TripleStore.prototype.findAllBForAC = function(a, c) {
-    var acKey = JSON.stringify([a, c]);
+    var acKey = JSON.stringify([a, null, c]);
     var triples = getTripleListFromMap(this.ac, acKey);
     var result = [];
     for (var i = 0; i < triples.length; i++) {
@@ -173,8 +176,8 @@ TripleStore.prototype.findAllBForAC = function(a, c) {
 
 // Public API
 TripleStore.prototype.findAllAForBC = function(b, c) {
-    var cbKey = JSON.stringify([c, b]);
-    var triples = getTripleListFromMap(this.cb, cbKey);
+    var bcKey = JSON.stringify([null, b, c]);
+    var triples = getTripleListFromMap(this.bc, bcKey);
     // console.log("findAllAForBC", b, c, "triples", triples, triples.length);
     var result = [];
     for (var i = 0; i < triples.length; i++) {
@@ -187,7 +190,7 @@ TripleStore.prototype.findAllAForBC = function(b, c) {
 
 // Public API
 TripleStore.prototype.findLatestCForAB = function(a, b) {
-    var abKey = JSON.stringify([a, b]);
+    var abKey = JSON.stringify([a, b, null]);
     var triples = getTripleListFromMap(this.ab, abKey);
     if (triples.length === 0) return null;
     return triples[triples.length - 1].c;
@@ -195,7 +198,7 @@ TripleStore.prototype.findLatestCForAB = function(a, b) {
 
 // Public API
 TripleStore.prototype.findLatestBForAC = function(a, c) {
-    var acKey = JSON.stringify([a, c]);
+    var acKey = JSON.stringify([a, null, c]);
     var triples = getTripleListFromMap(this.ac, acKey);
     if (triples.length === 0) return null;
     return triples[triples.length - 1].b;
@@ -203,8 +206,8 @@ TripleStore.prototype.findLatestBForAC = function(a, c) {
 
 // Public API
 TripleStore.prototype.findLatestAForBC = function(b, c) {
-    var cbKey = JSON.stringify([c, b]);
-    var triples = getTripleListFromMap(this.cb, cbKey);
+    var bcKey = JSON.stringify([null, b, c]);
+    var triples = getTripleListFromMap(this.bc, bcKey);
     if (triples.length === 0) return null;
     return triples[triples.length - 1].a;
 };
