@@ -422,15 +422,15 @@ function respondForTag(request, response) {
     return response.json({status: 'OK', message: "Index for Tag", tagRequested: tag, indexEntries: indexEntryList});
 }
 
-function respondForTriplesQueryPost(request, response) {
-    console.log("POST respondForQueryPost", request.url, request.body);
-    
+function respondForTriplesQueryPost(request, response) {    
     var query = request.body;
 
     var queryType = query.queryType;
     var a = query.a;
     var b = query.b;
     var c = query.c;
+    
+    console.log("==== POST respondForQueryPost", request.url, JSON.stringify([a, b, c, queryType]));
     
     var result = null;
     
