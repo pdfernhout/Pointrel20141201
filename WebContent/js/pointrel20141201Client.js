@@ -238,6 +238,11 @@ define([
     
     function pointrel_fetchEnvelope(itemReference, callback) {
         console.log("pointrel_fetchEnvelope", itemReference);
+        if (!itemReference) {
+            var errorMessage = "ERROR: itemReference not specified in call to fetchEnvelope";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
+        }
         
         xhr.get(resourcesPath + itemReference, {
             handleAs: "text"
@@ -271,9 +276,13 @@ define([
         });
     }
     
-    
     function pointrel_queryByID(id, callback) {
         console.log("pointrel_queryByID", id);
+        if (!id) {
+            var errorMessage = "ERROR: id not specified in call to queryByID";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
+        }
         
         xhr.get(idIndexPath + id, {
             handleAs: "text"
@@ -290,6 +299,11 @@ define([
     
     function pointrel_queryByTag(tag, callback) {
         console.log("pointrel_queryByTag", tag);
+        if (!tag) {
+            var errorMessage = "ERROR: tag not specified in call to queryByTag";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
+        }
         
         xhr.get(tagIndexPath + tag, {
             handleAs: "text"
@@ -306,13 +320,13 @@ define([
     
     // c and queryType are optional args
     function pointrel_queryByTriple(a, b, c, queryType, callback) {
-        if (arguments.length === 3 && typeof(c) == "function") {
+        if (arguments.length === 3 && typeof(c) === "function") {
             callback = c;
             c = null;
             queryType = "latest";
         }
         
-        if (arguments.length === 4 && typeof(queryType) == "function") {
+        if (arguments.length === 4 && typeof(queryType) === "function") {
             callback = queryType;
             queryType = "latest";
         }
@@ -336,10 +350,11 @@ define([
         }
         
         if (serverQueryType === null) {
-            throw "Unsupported query type";
+            var errorMessage = "Unsupported query type in call to queryByTriple";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
             // callback("Unsupported query type", null);
         }
-        
         
         var query = {queryType: serverQueryType, a: a, b: b, c: c};
         var queryString = JSON.stringify(query, null, 2);
@@ -364,6 +379,11 @@ define([
     // Internal: fetch one item and add it to the map
     function fetchItem(referenceToEnvelopeMap, sha256AndLength) {
         console.log("fetchItem", sha256AndLength);
+        if (!sha256AndLength) {
+            var errorMessage = "ERROR: sha256AndLength not specified in call to fetchItem";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
+        }
         var deferred = new Deferred();
         pointrel_fetchEnvelope(sha256AndLength, function(error, envelope) {
             if (error) {
@@ -382,6 +402,11 @@ define([
     
     function loadEnvelopesForID(referenceToEnvelopeMap, id, callback) {
         console.log("loadEnvelopesForID", id);
+        if (!id) {
+            var errorMessage = "ERROR: id not specified in call to loadEnvelopesForID";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
+        }
         pointrel_queryByID(id, function(error, queryResult) {
             if (error) { console.log("loadEnvelopesForID error", error); return callback(error);}
             console.log("Got queryResult for id", id, queryResult);
@@ -392,6 +417,12 @@ define([
             for (var index in indexEntries) {
                 var indexEntry = indexEntries[index];
                 if (!referenceToEnvelopeMap[indexEntry.sha256AndLength]) {
+                    if (!indexEntry.sha256AndLength) {
+                        var errorMessage = "ERROR: indexEntry.sha256AndLength value missing in result from loadEnvelopesForID";
+                        console.log(errorMessage);
+                        console.log("queryResult", queryResult);
+                        throw new Error(errorMessage);
+                    }
                     promises.push(fetchItem(referenceToEnvelopeMap, indexEntry.sha256AndLength));
                 }
             }
@@ -408,6 +439,11 @@ define([
     // TODO: User server-side call to optimize this this
     function loadLatestEnvelopeForID(id, callback) {
         console.log("loadLatestEnvelopeForID", id);
+        if (!id) {
+            var errorMessage = "ERROR: id not specified in call to loadLatestEnvelopeForID";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
+        }
         pointrel_queryByID(id, function(error, queryResult) {
             if (error) { console.log("loadLatestEnvelopeForID error", error); return callback(error);}
             console.log("Got queryResult for id", id, queryResult);
@@ -423,6 +459,12 @@ define([
             }
             
             if (latestEntry) {
+                if (!latestEntry.sha256AndLength) {
+                    var errorMessage = "ERROR: latestEntry.sha256AndLength value missing in result from loadLatestEnvelopeForID";
+                    console.log(errorMessage);
+                    console.log("queryResult", queryResult);
+                    throw new Error(errorMessage);
+                }
                 pointrel_fetchEnvelope(latestEntry.sha256AndLength, function(error, envelope) {
                     if (error) {
                         console.log("error", error);
@@ -439,6 +481,11 @@ define([
     
     function loadEnvelopesForTag(referenceToEnvelopeMap, tag, callback) {
         console.log("loadEnvelopesForTag", tag);
+        if (!tag) {
+            var errorMessage = "ERROR: tag not specified in call to loadEnvelopesForTag";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
+        }
         pointrel_queryByTag(tag, function(error, queryResult) {
             if (error) { console.log("loadEnvelopesForTag error", error); return callback(error);}
             console.log("Got queryResult for tag", tag, queryResult);
@@ -449,6 +496,12 @@ define([
             for (var index in indexEntries) {
                 var indexEntry = indexEntries[index];
                 if (!referenceToEnvelopeMap[indexEntry.sha256AndLength]) {
+                    if (!indexEntry.sha256AndLength) {
+                        var errorMessage = "ERROR: indexEntry.sha256AndLength value missing in result from loadEnvelopesForTag";
+                        console.log(errorMessage);
+                        console.log("queryResult", queryResult);
+                        throw new Error(errorMessage);
+                    }
                     promises.push(fetchItem(referenceToEnvelopeMap, indexEntry.sha256AndLength));
                 }
             }
@@ -462,6 +515,11 @@ define([
     // TODO: User server-side call to optimize this this
     function loadLatestEnvelopeForTag(tag, callback) {
         console.log("loadLatestEnvelopeForTag", tag);
+        if (!tag) {
+            var errorMessage = "ERROR: tag not specified in call to loadLatestEnvelopeForTag";
+            console.log(errorMessage);
+            throw new Error(errorMessage);
+        }
         pointrel_queryByTag(tag, function(error, queryResult) {
             if (error) { console.log("loadLatestEnvelopeForTag error", error); return callback(error);}
             console.log("Got queryResult for tag", tag, queryResult);
