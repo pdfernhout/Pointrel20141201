@@ -13,7 +13,7 @@ require([
     
     documentCollection.startup();
     
-    window.setInterval(function() {
+    window.setTimeout(function() {
         console.log("shutting down test after one minute");
         documentCollection.shutdown();
     }, 60000);
