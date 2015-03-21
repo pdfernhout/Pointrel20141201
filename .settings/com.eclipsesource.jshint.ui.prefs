@@ -1,2 +1,4 @@
 eclipse.preferences.version=1
-included=server/*.js
+excluded=server/node_modules//*
+included=//*.js
+projectSpecificOptions=true
