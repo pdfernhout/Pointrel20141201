@@ -1,0 +1,454 @@
+Some notes on thinking through design issues with this version (20141201) of the Pointrel system.
+
+There are some notes for Pointrel20150??? which I have worked on mostly just as design notes.
+The changes here reflect some of that thinking, as well as recent thinking driven by issues in NarraFirma and Twirlip.
+
+Some issues I'm not quite happy with in Pointrel20141201-0.0.3 (as of 2015-04-05) include:
+
+A. The server reading the *entire* stored JSON data file at startup to just get the metadata or indexing.
+This is actually not much of an issue so far in practice.
+Even with 1000 small files, this loading time is not an issue.
+My concern is if a lot of media data gets stored like high-red images, sound recordings, or movies.
+However, another way to resolve this is to use a database for indexing the metadata once when recourse are ingested.
+
+Was also thinking about using YAML with multiple objects in a file as a solution.
+
+B. The content is nested in the metadata object.
+Conceptually, the metadata is distinct from the data.
+This causes a practical issue in that you may just want to retrieve the metadata, but it is incomplete in a sense
+without the content.
+It also contributes to problems loading just the metadata from a stored file.
+Also, it might be useful eventually to have digital signatures at the same level somehow?
+
+So, instead of:
+
+{
+  "__type": "org.pointrel.pointrel20141201.ContentEnvelope",
+  "id": "3",
+  "timestamp: "2015-04-05T17:31:01Z",
+  "content": {
+    "foo": "bar",
+    "id": 3
+  }
+}
+
+this might be better:
+
+{
+  "__type": "org.pointrel.pointrel20141201.ContentEnvelope",
+  metadata: {
+    "id": "3",
+    "timestamp: "2015-04-05T17:31:01Z"
+  },
+  "content": {
+    "foo": "bar",
+    "id": 3
+  }
+}
+
+However, it might be good to have the keys sorted alphabetically so the content came last, for canonical JSON.
+Not sure how to rename fields for this.
+The field "metadata" could become "category"? Or "card"? or "concept"? Or "a"? Or "_something"?
+Or "content" could become "zContent"?
+More on that later.
+
+C. Storing triples for indexing should be make incremental indexing easy.
+Triples are nice for indexing (a recent enhancement) and are more general than "tags" (more on tags later).
+However, part of the idea is that future processes could add indexing to documents.
+This might be a bit like CouchDB in a way, but different because the indexing goes with the document, not some map/reduce process.
+But right now, all the triples are stored in a "triples" field.
+
+Example:
+
+{
+    id: "test",
+    "timestamp: "2015-04-05T17:31:01Z",
+    triples: [
+        {
+            a: "test",
+            b: "{http://pointrel.org/pointrel20141201}document_tag",
+            c: "my tag"
+        }
+    ]
+}
+
+This makes it hard to add and especially remove additional indexing later.
+You don't know what triples should be kept, and which ones discarded for new indexing.
+Perhaps each triple could be tagged with the indexer that produced it?
+Or alternatively, there could be nested indexer sections. 
+That could also help with supporting abbreviated indexing where the triples are generated dynamically on the server.
+That could be the case if you want to just index all the fields for JSON content, to reduce redundancy.
+
+{
+    id: "test",
+    "timestamp: "2015-04-05T17:31:01Z",
+    indexing: {
+        original: [
+            {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}document_tag",
+                c: "my tag"
+            }
+        ],
+        keywords: [
+           {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}keyword",
+                c: "my keyword"
+            }
+        ]
+    }
+}
+
+Also, it might be best if the indexing was not mixed with the "metadata". Metadata is too general term anyway.
+The Metadata is intended more for cataloging and naming and assigning a unique ID and timestamps.
+It might be better to do this:
+
+{
+    filing: {
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z"
+    },
+    indexing: {
+        original: [
+            {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}document_tag",
+                c: "my tag"
+            }
+        ],
+        keywords: [
+           {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}keyword",
+                c: "my keyword"
+            }
+        ],
+        textSearchIndexer: true
+    },
+    content: "Content goes here..."
+}
+
+The "textSearchIndexer: true" might cause an indexer on the server to create triples for every word in the content,
+including stemmed version (so, perhaps "content", "go*", "goes", "here").
+That is more concise (and maybe enhance-able) than just creating triples on the client side.
+
+There is also a confusion here between triples and indexing.
+You might want to add triples to a document for indexing, as above.
+But you might also want to add triples just because you wanted to add them, as part of the document.
+These seem a different sort of triples than ones added for indexing, even if they work the same.
+In general, triples added for indexing should not add content beyond that which is in the document.
+But more general triples might be added as part of the document construction process.
+
+{
+    context: {
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z"
+    },
+    triples: [
+        {
+            a: "test",
+            b: "{http://pointrel.org/pointrel20141201}document_tag",
+            c: "my tag"
+        }
+    ],
+    indexing: {
+        keywords: [
+           {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}keyword",
+                c: "my keyword"
+            }
+        ],
+        textSearchIndexer: true
+    },
+    content: "Content goes here..."
+}
+
+But this still does not have alphabetical ordering for canonical JSON where content comes at end.
+Perhaps could replace this with an array?
+
+[
+    {   
+        type: "metadata",
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z"
+    },
+    {
+        type: "triples",
+        triples: [
+            {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}document_tag",
+                c: "my tag"
+            }
+        ]
+    },
+    {
+        type: "indexing",
+        indexing: {
+            keywords: [
+               {
+                    a: "test",
+                    b: "{http://pointrel.org/pointrel20141201}keyword",
+                    c: "my keyword"
+                }
+            ],
+            textSearchIndexer: true
+        }
+    },
+    {
+        type: "content",
+        content: "Content goes here..."
+    }
+]
+
+Not sure I like that at all, but it addresses the issue of having content come at end in canonical JSON.
+
+An alternative:
+
+{
+    "__type": "org.pointrel.pointrel20141201.ContentEnvelope",
+    "__version": "pointrel20141201-0.0.3",
+    context: {
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z",
+        "title": "My content"
+    },
+    indexing: {
+        keywords: [
+           {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}keyword",
+                c: "my keyword"
+            }
+        ],
+        textSearchIndexer: true
+    },
+    triples: [
+        {
+            a: "test",
+            b: "{http://pointrel.org/pointrel20141201}document_tag",
+            c: "my tag"
+        }
+    ],
+    zContent: "Content goes here..."
+}
+
+Or renaming: ------
+
+{
+    "__type": "org.pointrel.pointrel20141201.ContentEnvelope",
+    "__version": "pointrel20141201-0.0.3",
+    access: {
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z",
+        "title": "My content"
+    },
+    indexing: {
+        keywords: [
+           {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}keyword",
+                c: "my keyword"
+            }
+        ],
+        textSearchIndexer: true
+    },
+    triples: [
+        {
+            a: "test",
+            b: "{http://pointrel.org/pointrel20141201}document_tag",
+            c: "my tag"
+        }
+    ],
+    zContent: "Content goes here..."
+}
+
+Or: ------
+
+{
+    "__type": "org.pointrel.pointrel20141201.ContentEnvelope",
+    "__version": "pointrel20141201-0.0.3",
+    access: {
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z",
+        "title": "My content"
+    },
+    indexing: {
+        keywords: [
+           {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}keyword",
+                c: "my keyword"
+            }
+        ],
+        textSearchIndexer: true
+    },
+    triples: [
+        {
+            a: "test",
+            b: "{http://pointrel.org/pointrel20141201}document_tag",
+            c: "my tag"
+        }
+    ],
+    work: "Content goes here..."
+}
+
+Or: ------
+
+{
+    "__type": "org.pointrel.pointrel20141201.ContentEnvelope",
+    "__version": "pointrel20141201-0.0.3",
+    titlePage: {
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z",
+        "title": "My content"
+    },
+    indexing: {
+        keywords: [
+           {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}keyword",
+                c: "my keyword"
+            }
+        ],
+        textSearchIndexer: true
+    },
+    triples: [
+        {
+            a: "test",
+            b: "{http://pointrel.org/pointrel20141201}document_tag",
+            c: "my tag"
+        }
+    ],
+    work: "Content goes here..."
+}
+
+Or: ------
+
+{
+    "__type": "org.pointrel.pointrel20141201.ContentEnvelope",
+    "__version": "pointrel20141201-0.0.3",
+    access: {
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z",
+        "title": "My content"
+    },
+    triples: {
+        authored: [
+            {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}document_tag",
+                c: "my tag"
+            }
+        ],
+        keywords: [
+           {
+                a: "test",
+                b: "{http://pointrel.org/pointrel20141201}keyword",
+                c: "my keyword"
+            }
+        ],
+        textSearchIndexer: true
+    },
+
+    work: "Content goes here..."
+}
+
+No resolution on that yet...
+Was looking at terms here: http://libraries.ucsd.edu/help/glossary.html
+
+D. Versions/Revisions/Synchronization
+
+CouchDB has an approach to synchronization of tagging conflicts and expecting applications to clean them up afterwards,
+However, the git approach of expecting users "pushing" data to resolve the conflict before pushing seems to work well.
+The person pushing the content is motivated to resolve the conflcit in order to publish their changes,
+After a conflict is in a system, who is motivated to resolve it, or even notice it?
+
+I've added a version field before but not emphasized it, as a pointer to a previous resource hash.
+But I also like the idea if an incremental sequence number.
+So, might have:
+
+    access: {
+        "id": "test",
+        "timestamp: "2015-04-05T17:31:01Z",
+        "title": "My content",
+        revisionSequence: 5,
+        revisionUUID: "some long random UUID or maybe hash of contents..."
+        previousRevision: "a hash... or maybe the revision UUID?"
+    },
+
+Still some uncertainty....
+
+E. Storing JSON objects instead of strings
+
+Originally, and in keeping with C language roots, I thought of these objects for content and triple fields as strings.
+And I thought of a "content type" field as being about that string's format and/or purpose.
+But the content field seems to work OK even when an arbitrary JSON object.
+In a JavaScript-mostly system, why not just expect the content to be an arbitrary JSON object of any sort?
+
+Taking that further, maybe triple fields and some others should be arbitrary JSON objects stored in canonical form?
+Here is the use case. I want to create a tag of some sort that has a category and a value.
+I could create an encoding like "category|value", but that is arbitrary how it is defined.
+There gets to be an issue if either category or value could have a pipe in it.
+And I probably need to parse it again eventually.
+But, if I just store a JSON object, then I can store {category: "category", value: "value"} as the tag.
+And with JSON, the value with just get converted back and forth to a string representation.
+
+It is more computationally expensive that just working with strings (the common case).
+There is a minor side benefit that in a simple triple store implementation in JavaScript (without a better StringMap class) the JSON strings won't collide with JavaScript __proto__ field and such.
+My current TripelStore approach without that could fail for triple with such a,b,c strings.
+See: http://www.2ality.com/2012/01/objects-as-maps.html
+
+If I did this, what is the meaning then of a "content type" field?
+
+F. Filing
+
+Right now in Twirlip, I use the id as a file name to serve pages.
+This has some drawbacks.
+You can't delete a file, as the ID is always there. It could be hidden perhaps with a "delete" flag.
+I have trouble listing just a few items in the equivalent of a directory.
+It is hard to "move" a file, since the ID would have to change, which also leaves the old copy behind still.
+Even with a delete flag for the old version, you lose the history for the document.
+
+A different approach might be to have a "file" field in the metadata part (or accessor, card, or whatever it is called).
+That field would have a "file"-like path to get to the resource, like "twirlip.com/IBIS/test.json".
+I know I was trying to avoid having to name files for every action.
+But the hierarchical approach is so useful for files, since there is an exhaustive way to search for them.
+And you can create some conventionally for finding related files in a directory.
+Possibly, the ID could be used as a file ID id not file field is specified separately.
+Not sure if that is a good default.
+You could set the file field to "null" if the resource should not be findable that way.
+The "id" field in a way then would be equivalent to an inode in a UNIX file system.
+Also, you could perhaps specify a list of file paths if you wanted to have multiple ways of finding the resource.
+These are equivalent to hard links in a UNIX file system
+The server could maintain a hierarchy of directory-like objects that reflect the file names specified
+in the latest revision of each ingested document.
+
+Previously I had had "tags" which worked a little bit like this (but no hierarchy).
+But having now replaced tags with triples, I can wonder if the tag idea is still somehow valuable
+to restore, but as "files"?
+
+Another aspect of this is tracking updates for subsets of documents.
+If documents get "file" names, then clients can ask the server for the current revisions
+of any documents with file names in some subpart of the hierarchy.
+This would reduce the need to information updates.
+This could also be done with just the ID part, assuming it has a hierarchical structure with slashes.
+But such resources can't then be easily "moved".
+Also, that forced the IDs to have a structure that reflects some current indexing need rather than, say, a random UUID.
+It seems better somehow if the tags (file names here) for finding something were mostly independent of the ID?
+
+Although, if might be possible to just implement this with triples?
+Bus maybe not? For hierarchical data, you need to construct the path parts then as triples?
+A has-subdir AB
+AB has-subdir ABC
+ABC has-file resource
+
+I guess it is doable for arbitrary nesting...
+If you change the document's file name (or names), then you would remove that indexing.
+And then those would no longer be findable.
+But, it might be harder to have machinery in server for users listening for changes in part of the directory tree.
+
+
+
